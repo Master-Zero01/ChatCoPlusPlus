@@ -207,8 +207,8 @@ public class Main extends JavaPlugin {
                         Optional.ofNullable(((Player) sender).getVehicle()).ifPresent(Entity::eject);
                         EntityDamageEvent.DamageCause randomDamageCause = getRandomDamageCause();
                         EntityDamageEvent damageEvent = new EntityDamageEvent(((Player) sender), randomDamageCause, 999);
-                        ((Player) sender).setHealth(1);
                         ((Player) sender).setLastDamageCause(damageEvent);
+                        ((Player) sender).setHealth(0);
                     }
                 }).runTask(this);
                 return true;
