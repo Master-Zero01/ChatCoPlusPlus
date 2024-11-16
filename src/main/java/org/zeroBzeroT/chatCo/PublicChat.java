@@ -1,5 +1,11 @@
 package org.zeroBzeroT.chatCo;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -22,13 +28,14 @@ import java.io.File;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 
 public class PublicChat implements Listener {
-    public final Main plugin;
+    public static Main plugin = null;
     private final FileConfiguration permissionConfig;
 
     public PublicChat(final Main plugin) {
-        this.plugin = plugin;
+        PublicChat.plugin = plugin;
         File customConfig = Main.PermissionConfig;
         permissionConfig = YamlConfiguration.loadConfiguration(customConfig);
+        setupListener();
     }
 
     public String replacePrefixColors(String message, final Player player) {
@@ -59,71 +66,66 @@ public class PublicChat implements Listener {
         return message;
     }
 
-    /**
-     * @url https://docs.advntr.dev/text.html
-     */
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-    public void onAsyncChat(AsyncChatEvent event) {
-        // Set format to the plain message, since the player is not needed
-        //String oldFormat = event.getFormat();
-        //event.setFormat("%2$s");
+    private void setupListener() {
+        ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
 
-        // Plain message
-        final Player player = event.getPlayer();
-        String legacyMessage = LegacyComponentSerializer.legacyAmpersand().serialize(event.message());
-        legacyMessage = replacePrefixColors(legacyMessage, player);
-        legacyMessage = replaceInlineColors(legacyMessage, player);
+        protocolManager.addPacketListener(new PacketAdapter(PublicChat.plugin,
+                ListenerPriority.LOWEST,
+                PacketType.Play.Client.CHAT) {
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                Player player = event.getPlayer();
+                String message = event.getPacket().getStrings().read(0);
 
-        // Do not send empty messages
-        if (ChatColor.stripColor(legacyMessage).trim().isEmpty()) {
-            event.setCancelled(true);
-            return;
-        }
+                String legacyMessage = LegacyComponentSerializer.legacyAmpersand().serialize(Component.text(message));
+                legacyMessage = replacePrefixColors(legacyMessage, player);
+                legacyMessage = replaceInlineColors(legacyMessage, player);
 
-        // Message text
-        TextComponent messageText = componentFromLegacyText(legacyMessage);
-
-        // Sender name
-        TextComponent messageSender = componentFromLegacyText(player.getDisplayName());
-
-        if (plugin.getConfig().getBoolean("ChatCo.whisperOnClick", true)) {
-            messageSender = messageSender.clickEvent(ClickEvent.suggestCommand("/w " + player.getName() + " "));
-            messageSender = messageSender.hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Whisper to " + player.getName())));
-        }
-
-        // Message
-        TextComponent message = Component.text("")
-                .append(componentFromLegacyText("<"))
-                .append(messageSender)
-                .append(componentFromLegacyText("> "))
-                .append(messageText);
-
-        // Send to the players
-        if (!plugin.getConfig().getBoolean("ChatCo.chatDisabled", false)) {
-            for (Audience recipient : event.viewers()) {
-                try {
-                    if (recipient instanceof Player) {
-                        ChatPlayer chatPlayer = plugin.getChatPlayer((Player) recipient);
-
-                        if (chatPlayer.chatDisabled)
-                            continue;
-
-                        if (chatPlayer.isIgnored(player.getName()) && plugin.getConfig().getBoolean("ChatCo.ignoresEnabled", true))
-                            continue;
-                    }
-
-                    recipient.sendMessage(message);
-                } catch (NullPointerException e) {
-                    e.printStackTrace();
+                if (ChatColor.stripColor(legacyMessage).trim().isEmpty()) {
+                    event.setCancelled(true);
+                    return;
                 }
+
+                TextComponent messageText = componentFromLegacyText(legacyMessage);
+                TextComponent messageSender = componentFromLegacyText(player.getDisplayName());
+
+                if (PublicChat.plugin.getConfig().getBoolean("ChatCo.whisperOnClick", true)) {
+                    messageSender = messageSender.clickEvent(ClickEvent.suggestCommand("/w " + player.getName() + " "));
+                    messageSender = messageSender.hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Whisper to " + player.getName())));
+                }
+
+                TextComponent chatMessage = Component.text("")
+                        .append(componentFromLegacyText("<"))
+                        .append(messageSender)
+                        .append(componentFromLegacyText("> "))
+                        .append(messageText);
+
+                boolean isBlackholed = BlackholeModule.isPlayerBlacklisted(player);
+
+                if (!PublicChat.plugin.getConfig().getBoolean("ChatCo.chatDisabled", false)) {
+                    if (isBlackholed) {
+                        player.sendMessage(chatMessage);
+                    } else {
+                        for (Player recipient : player.getWorld().getPlayers()) {
+                            try {
+                                ChatPlayer chatPlayer = PublicChat.plugin.getChatPlayer(recipient);
+
+                                if (chatPlayer.chatDisabled)
+                                    continue;
+
+                                if (chatPlayer.isIgnored(player.getName()) && PublicChat.plugin.getConfig().getBoolean("ChatCo.ignoresEnabled", true))
+                                    continue;
+
+                                recipient.sendMessage(chatMessage);
+                            } catch (NullPointerException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+                event.setCancelled(true);
             }
-        }
-
-        // Do not send it to the players again - no event cancelling, so that other plugins can process the chat
-        event.viewers().clear();
-
-        // Write back the old format
-        //event.setFormat(oldFormat);
+        });
     }
 
     @EventHandler

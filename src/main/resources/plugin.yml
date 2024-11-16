@@ -26,6 +26,39 @@ commands:
   chatco:
     description: Enables or disables whispers and spoilers. Only console input accepted. 'e' enables, 'd' disables.
     usage: /chatco <whispers|spoilers|newcommands|whisperlog> <e|d>
+  kill:
+    description: Instant Seppuku
+    usage: /kill or /suicide
+  suicide:
+    description: Instant Seppuku
+    usage: /kill or /suicide
+  whisper:
+    description: Allows a player to whisper another player
+    usage: /whisper or /w to whisper another player
+  bed:
+    description: Allows you to see where your bed is set
+    usage: /bed to see the bed location
+  tell:
+    description: Allows a player to whisper another player
+    usage: /whisper or /w to whisper another player
+  msg:
+    description: Allows a player to whisper another player
+    usage: /whisper or /w to whisper another player
+  message:
+    description: Allows a player to whisper another player
+    usage: /whisper or /w to whisper another player
+  w:
+    description: Allows a player to whisper another player
+    usage: /whisper or /w to whisper another player
+  reply:
+    description: Allows a player to reply to the last received message
+    usage: /reply or /r to reply to your last message
+  r:
+    description: Allows a player to reply to the last received message
+    usage: /reply or /r to reply to your last message
+  blackhole:
+    description: Nonya
+    usage: /blackhole <player name>
 permissions:
   ChatCo.chatPrefixes.GREEN:
     description: Allows you to use to use Green prefixes in chat

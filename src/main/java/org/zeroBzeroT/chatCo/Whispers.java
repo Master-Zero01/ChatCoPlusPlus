@@ -5,6 +5,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -17,12 +18,42 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 import static org.zeroBzeroT.chatCo.Utils.now;
 
 public record Whispers(Main plugin) implements Listener {
+
+    private static Map<String, ChatColor> colorMap = Map.of();
+
+    public Whispers(Main plugin) {
+        this.plugin = plugin;
+        colorMap = new HashMap<>();
+        initializeColorMap();
+    }
+
+    private void initializeColorMap() {
+        colorMap.put("%BLACK%", ChatColor.BLACK);
+        colorMap.put("%DARK_BLUE%", ChatColor.DARK_BLUE);
+        colorMap.put("%DARK_GREEN%", ChatColor.DARK_GREEN);
+        colorMap.put("%DARK_AQUA%", ChatColor.DARK_AQUA);
+        colorMap.put("%DARK_RED%", ChatColor.DARK_RED);
+        colorMap.put("%DARK_PURPLE%", ChatColor.DARK_PURPLE);
+        colorMap.put("%GOLD%", ChatColor.GOLD);
+        colorMap.put("%GRAY%", ChatColor.GRAY);
+        colorMap.put("%DARK_GRAY%", ChatColor.DARK_GRAY);
+        colorMap.put("%BLUE%", ChatColor.BLUE);
+        colorMap.put("%GREEN%", ChatColor.GREEN);
+        colorMap.put("%AQUA%", ChatColor.AQUA);
+        colorMap.put("%RED%", ChatColor.RED);
+        colorMap.put("%LIGHT_PURPLE%", ChatColor.LIGHT_PURPLE);
+        colorMap.put("%YELLOW%", ChatColor.YELLOW);
+        colorMap.put("%WHITE%", ChatColor.WHITE);
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onPlayerCommandPreprocess(final PlayerCommandPreprocessEvent event) {
         final String[] args = event.getMessage().split(" ");
@@ -100,50 +131,22 @@ public record Whispers(Main plugin) implements Listener {
     public TextComponent whisperFormat(Boolean send, final Player sender, final Player target) {
         String legacyMessage = send ? plugin.getConfig().getString("ChatCo.whisperFormat.send") : plugin.getConfig().getString("ChatCo.whisperFormat.receive");
 
-        for (ChatColor color : ChatColor.values()) {
-            legacyMessage = legacyMessage.replace("%" + color.name() + "%", color.toString());
+        // Replace placeholders with their corresponding ChatColor values
+        for (Map.Entry<String, ChatColor> entry : colorMap.entrySet()) {
+            legacyMessage = legacyMessage.replace(entry.getKey(), entry.getValue().toString());
         }
 
-        String[] parts;
-        String name;
-
+        // Process the full message first
         if (send) {
             legacyMessage = legacyMessage.replace("%SENDER%", sender.getName());
-            parts = legacyMessage.split("%RECEIVER%", 2);
-            name = target.getName();
+            legacyMessage = legacyMessage.replace("%RECEIVER%", target.getName());
         } else {
             legacyMessage = legacyMessage.replace("%RECEIVER%", target.getName());
-            parts = legacyMessage.split("%SENDER%", 2);
-            name = sender.getName();
+            legacyMessage = legacyMessage.replace("%SENDER%", sender.getName());
         }
 
-        // Part before player name
-        TextComponent message = componentFromLegacyText(parts[0]);
-
-        // Player name
-        TextComponent messagePlayer = componentFromLegacyText(name);
-
-        if (plugin.getConfig().getBoolean("ChatCo.whisperOnClick", true)) {
-            messagePlayer = messagePlayer.clickEvent(ClickEvent.suggestCommand("/w " + name + " "));
-            messagePlayer = messagePlayer.hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Whisper to " + name)));
-        }
-
-        if (messagePlayer.color() != message.color())
-            messagePlayer = messagePlayer.color(message.color());
-
-        message = message.append(messagePlayer);
-
-        // Part after player name
-        if (parts.length == 2) {
-            TextComponent part1 = componentFromLegacyText(parts[1]);
-
-            if (part1.color() != message.color())
-                message = message.color(part1.color());
-
-            message = message.append(part1);
-        }
-
-        return message;
+        // Now we can safely deserialize the whole message
+        return LegacyComponentSerializer.legacySection().deserialize(legacyMessage);
     }
 
     private void sendPrivateMessage(Player sender, Player receiver, String message) {
@@ -162,8 +165,8 @@ public record Whispers(Main plugin) implements Listener {
         TextComponent senderMessage = whisperFormat(true, sender, receiver);
         TextComponent receiverMessage = whisperFormat(false, sender, receiver);
 
-        receiverMessage = receiverMessage.append(Component.text(message));
-        senderMessage = senderMessage.append(Component.text(message));
+        receiverMessage = receiverMessage.append(Component.text(ChatColor.translateAlternateColorCodes('&', message)));
+        senderMessage = senderMessage.append(Component.text(ChatColor.translateAlternateColorCodes('&', message)));
 
         sender.sendMessage(senderMessage);
 
@@ -171,7 +174,7 @@ public record Whispers(Main plugin) implements Listener {
             sender.sendMessage(ChatColor.RED + receiver.getName() + " is ignoring you.");
         } else if (doNotSend && plugin.getConfig().getBoolean("ChatCo.chatDisabledMessageEnabled", true)) {
             sender.sendMessage(ChatColor.RED + receiver.getName() + "'s chat is disabled.");
-        } else if (!doNotSend && !isIgnoring) {
+        } else if (!doNotSend && !isIgnoring && !BlackholeModule.isPlayerBlacklisted(sender)) {
             receiver.sendMessage(receiverMessage);
 
             if (target != null)

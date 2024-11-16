@@ -9,18 +9,22 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 
 import static org.zeroBzeroT.chatCo.Utils.saveStreamToFile;
 
@@ -29,16 +33,27 @@ public class Main extends JavaPlugin {
     public static File WhisperLog;
     public static File dataFolder;
     private static File Help;
+    private Announcer announcer;
     public Collection<ChatPlayer> playerList;
 
     public void onDisable() {
+        if (announcer != null) {
+            announcer.disable();
+        }
         playerList.clear();
+    }
+
+    // Add this method to handle announcer reloading
+    public void reloadAnnouncer() {
+        if (announcer != null) {
+            announcer.loadConfig();
+        } else if (getConfig().getBoolean("ChatCo.announcements.enabled", true)) {
+            announcer = new Announcer(this);
+        }
     }
 
     public void onEnable() {
         playerList = Collections.synchronizedCollection(new ArrayList<>());
-
-        // Config defaults
         getConfig().options().copyDefaults(true);
         getConfig().options().parseComments(true);
 
@@ -46,8 +61,8 @@ public class Main extends JavaPlugin {
         toggleConfigValue(0);
 
         final PluginManager pm = getServer().getPluginManager();
-
         pm.registerEvents(new PublicChat(this), this);
+        pm.registerEvents(new BlackholeModule(this), this);
 
         if (getConfig().getBoolean("ChatCo.whisperChangesEnabled", true)) {
             pm.registerEvents(new Whispers(this), this);
@@ -57,8 +72,11 @@ public class Main extends JavaPlugin {
             pm.registerEvents(new Spoilers(), this);
         }
 
-        // Load Plugin Metrics
-        if (getConfig().getBoolean("ChatCo.bStats", true)) {
+        if (getConfig().getBoolean("ChatCo.announcements.enabled", true)) {
+            announcer = new Announcer(this);
+        }
+
+        if (getConfig().getBoolean("ChatCo.bStats", false)) {
             new Metrics(this, 16309);
         }
     }
@@ -112,7 +130,6 @@ public class Main extends JavaPlugin {
             saveStreamToFile(getResource("help.txt"), Main.Help);
         }
 
-        // Save the default config file, if it does not exist
         saveDefaultConfig();
 
         if (!Main.PermissionConfig.exists()) {
@@ -180,12 +197,87 @@ public class Main extends JavaPlugin {
                 sender.sendMessage(ChatColor.YELLOW + "" + i + " players ignored.");
                 return true;
             }
+
+            if((cmd.getName().equalsIgnoreCase("suicide") ||
+                    cmd.getName().equalsIgnoreCase("kill")) &&
+                    getConfig().getBoolean("ChatCo.suicideCommand", true) && !sender.isOp()) {
+                (new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        Optional.ofNullable(((Player) sender).getVehicle()).ifPresent(Entity::eject);
+                        EntityDamageEvent.DamageCause randomDamageCause = getRandomDamageCause();
+                        EntityDamageEvent damageEvent = new EntityDamageEvent(((Player) sender), randomDamageCause, 999);
+                        ((Player) sender).setHealth(1);
+                        ((Player) sender).setLastDamageCause(damageEvent);
+                    }
+                }).runTask(this);
+                return true;
+            }
+
+            if(cmd.getName().equalsIgnoreCase("bed")) {
+                (new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        Player player = (Player) sender;
+                        Location bedLocation = player.getBedSpawnLocation();
+
+                        if (bedLocation != null) {
+                            double x = bedLocation.getX();
+                            double y = bedLocation.getY();
+                            double z = bedLocation.getZ();
+
+                            player.sendMessage(ChatColor.GOLD + "[" + ChatColor.YELLOW + "Anarchadia" + ChatColor.GOLD + "] "
+                                    + ChatColor.GREEN + "Your bed is set at: "
+                                    + ChatColor.AQUA + "X: " + ChatColor.WHITE + String.format("%.2f", x) + ", "
+                                    + ChatColor.AQUA + "Y: " + ChatColor.WHITE + String.format("%.2f", y) + ", "
+                                    + ChatColor.AQUA + "Z: " + ChatColor.WHITE + String.format("%.2f", z));
+                        } else {
+                            player.sendMessage(ChatColor.GOLD + "[" + ChatColor.YELLOW + "Anarchadia" + ChatColor.GOLD + "] "
+                                    + ChatColor.RED + "You don't have a bed set.");
+                        }
+                    }
+                }).runTaskAsynchronously(this);
+                return true;
+            } else {
+                sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+            }
+        }
+
+        if (cmd.getName().equalsIgnoreCase("blackhole") && (sender.isOp() || sender instanceof ConsoleCommandSender)) {
+            if (args.length == 0) {
+                sender.sendMessage("Usage: /blackhole <player> or /blackhole reload");
+                return true;
+            }
+
+            if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
+                BlackholeModule.reloadConfiguration();
+                sender.sendMessage("Blackhole configuration reloaded.");
+                return true;
+            }
+
+            if (args.length == 1) {
+                Player target = Bukkit.getPlayer(args[0]);
+                if (target == null) {
+                    sender.sendMessage("Player not found.");
+                    return true;
+                }
+
+                if (BlackholeModule.isPlayerBlacklisted(target)) {
+                    BlackholeModule.removePlayerFromBlacklist(target);
+                    sender.sendMessage("Removed from blacklist.");
+                } else {
+                    BlackholeModule.addPlayerToBlacklist(target);
+                    sender.sendMessage("Added to blacklist.");
+                }
+                return true;
+            }
         }
 
         if (cmd.getName().equalsIgnoreCase("chatco")) {
             if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
                 reloadConfig();
                 saveConfig();
+                reloadAnnouncer();
                 sender.sendMessage("Config reloaded");
                 return true;
             }
@@ -240,7 +332,7 @@ public class Main extends JavaPlugin {
 
     public ChatPlayer getChatPlayer(final Player p) {
         for (final ChatPlayer chatPlayer : playerList) {
-            if (chatPlayer.playerUUID.equals(p .getUniqueId())) {
+            if (chatPlayer.playerUUID.equals(p.getUniqueId())) {
                 return chatPlayer;
             }
         }
@@ -292,8 +384,13 @@ public class Main extends JavaPlugin {
         p.sendMessage(message);
     }
 
+    private EntityDamageEvent.DamageCause getRandomDamageCause() {
+        EntityDamageEvent.DamageCause[] causes = EntityDamageEvent.DamageCause.values();
+        Random random = new Random();
+        return causes[random.nextInt(causes.length)];
+    }
+
     public void remove(Player player) {
         playerList.removeIf(p -> p.player.equals(player));
     }
 }
-
