@@ -1,12 +1,12 @@
-name: ChatCo
-version: ${project.version}
+name: ChatCoPlus
+version: '${project.version}'
 main: org.zeroBzeroT.chatCo.Main
-api-version: 1.20
+api-version: '1.20'
+depend: [ProtocolLib]
+authors: [0xB2]
+description: A simple chat plugin
+website: https://github.com/0xB2
 folia-supported: true
-description: ${project.description}
-authors:
-  - jj20051
-  - bierdosenhalter
 commands:
   togglechat:
     description: Enables or disables chat for the player.
@@ -26,12 +26,6 @@ commands:
   chatco:
     description: Enables or disables whispers and spoilers. Only console input accepted. 'e' enables, 'd' disables.
     usage: /chatco <whispers|spoilers|newcommands|whisperlog> <e|d>
-  kill:
-    description: Instant Seppuku
-    usage: /kill or /suicide
-  suicide:
-    description: Instant Seppuku
-    usage: /kill or /suicide
   whisper:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player

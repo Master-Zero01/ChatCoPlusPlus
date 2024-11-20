@@ -1,11 +1,7 @@
 package org.zeroBzeroT.chatCo;
 
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -22,7 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 import static org.zeroBzeroT.chatCo.Utils.now;
 
 public record Whispers(Main plugin) implements Listener {
@@ -169,7 +164,7 @@ public record Whispers(Main plugin) implements Listener {
         senderMessage = senderMessage.append(Component.text(ChatColor.translateAlternateColorCodes('&', message)));
 
         boolean isBlackholed = BlackholeModule.isPlayerBlacklisted(sender);
-        if (isBlackholed) {
+        if (isBlackholed && !BlackholeModule.isPlayerHidden(sender)) {
             plugin.getLogger().info("Blocked message from " + sender.getName() + ": " + ChatColor.stripColor(LegacyComponentSerializer.legacySection().serialize(senderMessage)));
         }
 
@@ -195,7 +190,7 @@ public record Whispers(Main plugin) implements Listener {
         if (plugin.getConfig().getBoolean("ChatCo.whisperLog", false)) {
             whisperLog(logText, sender.getName());
         }
-        if (plugin.getConfig().getBoolean("ChatCo.whisperMonitoring", false)) {
+        if (plugin.getConfig().getBoolean("ChatCo.whisperMonitoring", false) && !BlackholeModule.isPlayerHidden(sender)) {
             plugin.getLogger().info(sender.getName() + ": " + logText);
         }
     }

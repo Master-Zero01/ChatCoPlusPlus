@@ -1,22 +1,20 @@
 package org.zeroBzeroT.chatCo;
 
-import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -24,9 +22,17 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.*;
 
 import static org.zeroBzeroT.chatCo.Utils.saveStreamToFile;
+
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
 
 public class Main extends JavaPlugin {
     public static File PermissionConfig;
@@ -79,38 +85,53 @@ public class Main extends JavaPlugin {
         if (getConfig().getBoolean("ChatCo.bStats", false)) {
             new Metrics(this, 16309);
         }
+
+        // Setup kill command listener
+        setupKillCommandListener();
     }
 
-    private void toggleConfigValue(final int change) {
-        switch (change) {
-            case 3:
-                getConfig().set("ChatCo.spoilersEnabled", true);
-                break;
-            case 4:
-                getConfig().set("ChatCo.spoilersEnabled", false);
-                break;
-            case 5:
-                getConfig().set("ChatCo.whisperChangesEnabled", true);
-                break;
-            case 6:
-                getConfig().set("ChatCo.whisperChangesEnabled", false);
-                break;
-            case 7:
-                getConfig().set("ChatCo.newCommands", true);
-                break;
-            case 8:
-                getConfig().set("ChatCo.newCommands", false);
-                break;
-            case 9:
-                getConfig().set("ChatCo.whisperLog", true);
-                break;
-            case 10:
-                getConfig().set("ChatCo.whisperLog", false);
-                break;
+    private void setupKillCommandListener() {
+        if (getServer().getPluginManager().getPlugin("ProtocolLib") == null) {
+            getLogger().warning("ProtocolLib not found! Kill command handling will not work properly.");
+            return;
         }
 
-        saveConfig();
-        reloadConfig();
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this, 
+                PacketType.Play.Client.CHAT_COMMAND) {
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                String command = event.getPacket().getStrings().read(0);
+                
+                // Check if it's a kill command
+                if (command.equalsIgnoreCase("kill")) {
+                    Player player = event.getPlayer();
+                    
+                    // Let vanilla handle everything for OPs
+                    if (player.isOp()) {
+                        return;
+                    }
+                    
+                    // For non-OPs, handle with our custom logic
+                    event.setCancelled(true);
+                    
+                    // Schedule our custom kill logic
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (!getConfig().getBoolean("ChatCo.suicideCommand", true)) {
+                                return;
+                            }
+                            
+                            Optional.ofNullable(player.getVehicle()).ifPresent(Entity::eject);
+                            EntityDamageEvent.DamageCause[] causes = EntityDamageEvent.DamageCause.values();
+                            EntityDamageEvent.DamageCause randomCause = causes[new Random().nextInt(causes.length)];
+                            player.setLastDamageCause(new EntityDamageEvent(player, randomCause, Double.MAX_VALUE));
+                            player.setHealth(0);
+                        }
+                    }.runTask(Main.this);
+                }
+            }
+        });
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -198,23 +219,32 @@ public class Main extends JavaPlugin {
                 return true;
             }
 
-            if((cmd.getName().equalsIgnoreCase("suicide") ||
-                    cmd.getName().equalsIgnoreCase("kill")) &&
-                    getConfig().getBoolean("ChatCo.suicideCommand", true) && !sender.isOp()) {
+            if(cmd.getName().equalsIgnoreCase("suicide") && getConfig().getBoolean("ChatCo.suicideCommand", true)) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return true;
+                }
+                
                 (new BukkitRunnable() {
                     @Override
                     public void run() {
-                        Optional.ofNullable(((Player) sender).getVehicle()).ifPresent(Entity::eject);
+                        Player player = (Player) sender;
+                        Optional.ofNullable(player.getVehicle()).ifPresent(Entity::eject);
                         EntityDamageEvent.DamageCause randomDamageCause = getRandomDamageCause();
-                        EntityDamageEvent damageEvent = new EntityDamageEvent(((Player) sender), randomDamageCause, 999);
-                        ((Player) sender).setLastDamageCause(damageEvent);
-                        ((Player) sender).setHealth(0);
+                        EntityDamageEvent damageEvent = new EntityDamageEvent(player, randomDamageCause, 999);
+                        player.setLastDamageCause(damageEvent);
+                        player.setHealth(0);
                     }
                 }).runTask(this);
                 return true;
             }
 
             if(cmd.getName().equalsIgnoreCase("bed")) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return true;
+                }
+                
                 (new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -238,20 +268,35 @@ public class Main extends JavaPlugin {
                     }
                 }).runTaskAsynchronously(this);
                 return true;
-            } else {
-                sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
             }
         }
 
         if (cmd.getName().equalsIgnoreCase("blackhole") && (sender.isOp() || sender instanceof ConsoleCommandSender)) {
             if (args.length == 0) {
-                sender.sendMessage("Usage: /blackhole <player> or /blackhole reload");
+                sender.sendMessage("Usage: /blackhole <player> or /blackhole hide <player> or /blackhole reload");
                 return true;
             }
 
             if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
                 BlackholeModule.reloadConfiguration();
                 sender.sendMessage("Blackhole configuration reloaded.");
+                return true;
+            }
+
+            if (args.length == 2 && args[0].equalsIgnoreCase("hidden") || args[0].equalsIgnoreCase("hide")) {
+                Player target = Bukkit.getPlayer(args[1]);
+                if (target == null) {
+                    sender.sendMessage("Player not found.");
+                    return true;
+                }
+
+                if (!BlackholeModule.isPlayerBlacklisted(target)) {
+                    sender.sendMessage("Player must be blacklisted first.");
+                    return true;
+                }
+
+                BlackholeModule.setPlayerHidden(target, !BlackholeModule.isPlayerHidden(target));
+                sender.sendMessage("Player messages will " + (BlackholeModule.isPlayerHidden(target) ? "not" : "now") + " show in console.");
                 return true;
             }
 
@@ -266,7 +311,7 @@ public class Main extends JavaPlugin {
                     BlackholeModule.removePlayerFromBlacklist(target);
                     sender.sendMessage("Removed from blacklist.");
                 } else {
-                    BlackholeModule.addPlayerToBlacklist(target);
+                    BlackholeModule.addPlayerToBlacklist(target, false);
                     sender.sendMessage("Added to blacklist.");
                 }
                 return true;
@@ -392,5 +437,37 @@ public class Main extends JavaPlugin {
 
     public void remove(Player player) {
         playerList.removeIf(p -> p.player.equals(player));
+    }
+
+    private void toggleConfigValue(final int change) {
+        switch (change) {
+            case 3:
+                getConfig().set("ChatCo.spoilersEnabled", true);
+                break;
+            case 4:
+                getConfig().set("ChatCo.spoilersEnabled", false);
+                break;
+            case 5:
+                getConfig().set("ChatCo.whisperChangesEnabled", true);
+                break;
+            case 6:
+                getConfig().set("ChatCo.whisperChangesEnabled", false);
+                break;
+            case 7:
+                getConfig().set("ChatCo.newCommands", true);
+                break;
+            case 8:
+                getConfig().set("ChatCo.newCommands", false);
+                break;
+            case 9:
+                getConfig().set("ChatCo.whisperLog", true);
+                break;
+            case 10:
+                getConfig().set("ChatCo.whisperLog", false);
+                break;
+        }
+
+        saveConfig();
+        reloadConfig();
     }
 }

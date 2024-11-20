@@ -9,41 +9,95 @@ import java.util.*;
 public class BlackholeModule implements Listener {
 
     private static JavaPlugin plugin = null;
-    private static final Set<String> blacklist = new HashSet<>();
+    private static final Map<String, List<String>> playerSettings = new HashMap<>();
+    private static final String HIDDEN_SETTING = "hidden";
 
     public BlackholeModule(JavaPlugin plugin) {
         BlackholeModule.plugin = plugin;
-        loadBlacklist();
+        loadSettings();
     }
 
-    public static void addPlayerToBlacklist(Player player) {
-        blacklist.add(player.getUniqueId().toString());
-        saveBlacklist();
+    public static void addPlayerToBlacklist(Player player, boolean hidden) {
+        String uuid = player.getUniqueId().toString();
+        List<String> settings = new ArrayList<>();
+        if (hidden) {
+            settings.add(HIDDEN_SETTING);
+        }
+        playerSettings.put(uuid, settings);
+        
+        // Immediately update config
+        plugin.getConfig().set("blacklist_settings." + uuid, settings);
+        plugin.saveConfig();
     }
 
     public static void removePlayerFromBlacklist(Player player) {
-        blacklist.remove(player.getUniqueId().toString());
-        saveBlacklist();
+        String uuid = player.getUniqueId().toString();
+        playerSettings.remove(uuid);
+        
+        // Ensure the entry is removed from config
+        plugin.getConfig().set("blacklist_settings." + uuid, null);
+        plugin.saveConfig();
     }
 
     public static boolean isPlayerBlacklisted(Player player) {
-        return blacklist.contains(player.getUniqueId().toString());
+        return playerSettings.containsKey(player.getUniqueId().toString());
+    }
+
+    public static boolean isPlayerHidden(Player player) {
+        List<String> settings = playerSettings.get(player.getUniqueId().toString());
+        return settings != null && settings.contains(HIDDEN_SETTING);
+    }
+
+    public static void setPlayerHidden(Player player, boolean hidden) {
+        String uuid = player.getUniqueId().toString();
+        List<String> settings = playerSettings.getOrDefault(uuid, new ArrayList<>());
+        
+        if (hidden && !settings.contains(HIDDEN_SETTING)) {
+            settings.add(HIDDEN_SETTING);
+        } else if (!hidden) {
+            settings.remove(HIDDEN_SETTING);
+        }
+        
+        playerSettings.put(uuid, settings);
+        
+        // Immediately update config
+        plugin.getConfig().set("blacklist_settings." + uuid, settings);
+        plugin.saveConfig();
     }
 
     public static void reloadConfiguration() {
         plugin.reloadConfig();
-        loadBlacklist();
+        loadSettings();
     }
 
-    private static void saveBlacklist() {
-        List<String> blacklistEntries = new ArrayList<>(blacklist);
-        plugin.getConfig().set("blacklist", blacklistEntries);
-        plugin.saveConfig();
-    }
+    private static void loadSettings() {
+        playerSettings.clear();
+        
+        // Load from config
+        if (plugin.getConfig().contains("blacklist_settings")) {
+            Map<String, Object> loadedData = plugin.getConfig().getConfigurationSection("blacklist_settings").getValues(false);
+            for (Map.Entry<String, Object> entry : loadedData.entrySet()) {
+                if (entry.getValue() instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<String> settings = (List<String>) entry.getValue();
+                    playerSettings.put(entry.getKey(), settings);
+                }
+            }
+        }
 
-    private static void loadBlacklist() {
-        List<String> blacklistEntries = plugin.getConfig().getStringList("blacklist");
-        blacklist.clear();
-        blacklist.addAll(blacklistEntries);
+        // Check for entries in the old blacklist format and convert them
+        List<String> oldBlacklist = plugin.getConfig().getStringList("blacklist");
+        if (!oldBlacklist.isEmpty()) {
+            for (String uuid : oldBlacklist) {
+                if (!playerSettings.containsKey(uuid)) {
+                    playerSettings.put(uuid, new ArrayList<>());
+                    // Immediately save the conversion
+                    plugin.getConfig().set("blacklist_settings." + uuid, new ArrayList<>());
+                }
+            }
+            // Remove old format and save
+            plugin.getConfig().set("blacklist", null);
+            plugin.saveConfig();
+        }
     }
 }
