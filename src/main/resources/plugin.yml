@@ -41,6 +41,9 @@ commands:
   message:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player
+  suicide:
+    description: Allows a player to commit seppuku
+    usage: /suicide or /kill
   w:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player
