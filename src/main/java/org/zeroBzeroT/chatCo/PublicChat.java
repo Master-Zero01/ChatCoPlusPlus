@@ -72,6 +72,7 @@ public class PublicChat implements Listener {
         protocolManager.addPacketListener(new PacketAdapter(PublicChat.plugin,
                 ListenerPriority.LOWEST,
                 PacketType.Play.Client.CHAT) {
+            @SuppressWarnings("deprecation")
             @Override
             public void onPacketReceiving(PacketEvent event) {
                 Player player = event.getPlayer();
@@ -104,6 +105,7 @@ public class PublicChat implements Listener {
 
                 if (!PublicChat.plugin.getConfig().getBoolean("ChatCo.chatDisabled", false)) {
                     if (isBlackholed) {
+                        plugin.getLogger().info("Blocked message from " + player.getName() + ": " + ChatColor.stripColor(LegacyComponentSerializer.legacySection().serialize(chatMessage)));
                         player.sendMessage(chatMessage);
                     } else {
                         for (Player recipient : player.getWorld().getPlayers()) {

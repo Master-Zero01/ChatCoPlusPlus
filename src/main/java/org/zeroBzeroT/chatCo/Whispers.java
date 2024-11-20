@@ -168,13 +168,18 @@ public record Whispers(Main plugin) implements Listener {
         receiverMessage = receiverMessage.append(Component.text(ChatColor.translateAlternateColorCodes('&', message)));
         senderMessage = senderMessage.append(Component.text(ChatColor.translateAlternateColorCodes('&', message)));
 
+        boolean isBlackholed = BlackholeModule.isPlayerBlacklisted(sender);
+        if (isBlackholed) {
+            plugin.getLogger().info("Blocked message from " + sender.getName() + ": " + ChatColor.stripColor(LegacyComponentSerializer.legacySection().serialize(senderMessage)));
+        }
+
         sender.sendMessage(senderMessage);
 
         if (isIgnoring && plugin.getConfig().getBoolean("ChatCo.ignoreMessageEnabled", true)) {
             sender.sendMessage(ChatColor.RED + receiver.getName() + " is ignoring you.");
         } else if (doNotSend && plugin.getConfig().getBoolean("ChatCo.chatDisabledMessageEnabled", true)) {
             sender.sendMessage(ChatColor.RED + receiver.getName() + "'s chat is disabled.");
-        } else if (!doNotSend && !isIgnoring && !BlackholeModule.isPlayerBlacklisted(sender)) {
+        } else if (!doNotSend && !isIgnoring && !isBlackholed) {
             receiver.sendMessage(receiverMessage);
 
             if (target != null)
