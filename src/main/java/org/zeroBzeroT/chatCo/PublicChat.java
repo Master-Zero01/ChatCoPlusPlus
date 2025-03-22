@@ -43,7 +43,9 @@ public class PublicChat implements Listener {
             if (prefix != null && message.startsWith(prefix)) {
                 // check for global or player permission
                 if (permissionConfig.getBoolean("ChatCo.chatPrefixes." + colorName, false) || player.hasPermission("ChatCo.chatPrefixes." + colorName)) {
-                    message = Utils.colorToString(colorName) + message;
+                    // Use hardcoded color code for reliability
+                    String colorCode = getDirectColorCode(colorName);
+                    message = colorCode + message;
                 }
 
                 // break here since we found a prefix color code
@@ -56,13 +58,45 @@ public class PublicChat implements Listener {
 
     public String replaceInlineColors(String message, final Player player) {
         for (String colorName : Utils.getNamedColors().keySet()) {
-            String colorCode = plugin.getConfig().getString("ChatCo.chatColors." + colorName);
-            if (colorCode != null && (permissionConfig.getBoolean("ChatCo.chatColors." + colorName, false) || player.hasPermission("ChatCo.chatColors." + colorName))) {
-                message = message.replace(colorCode, Utils.colorToString(colorName));
+            String configColorCode = plugin.getConfig().getString("ChatCo.chatColors." + colorName);
+            if (configColorCode != null && (permissionConfig.getBoolean("ChatCo.chatColors." + colorName, false) || player.hasPermission("ChatCo.chatColors." + colorName))) {
+                // Use hardcoded color code for reliability
+                String colorCode = getDirectColorCode(colorName);
+                message = message.replace(configColorCode, colorCode);
             }
         }
 
         return message;
+    }
+
+    /**
+     * Get direct color code string without using serialization
+     */
+    private String getDirectColorCode(String colorName) {
+        return switch (colorName.toUpperCase()) {
+            case "BLACK" -> "§0";
+            case "DARK_BLUE" -> "§1";
+            case "DARK_GREEN" -> "§2";
+            case "DARK_AQUA" -> "§3";
+            case "DARK_RED" -> "§4";
+            case "DARK_PURPLE" -> "§5";
+            case "GOLD" -> "§6";
+            case "GRAY" -> "§7";
+            case "DARK_GRAY" -> "§8";
+            case "BLUE" -> "§9";
+            case "GREEN" -> "§a";
+            case "AQUA" -> "§b";
+            case "RED" -> "§c";
+            case "LIGHT_PURPLE" -> "§d";
+            case "YELLOW" -> "§e";
+            case "WHITE" -> "§f";
+            case "BOLD" -> "§l";
+            case "ITALIC" -> "§o";
+            case "UNDERLINE" -> "§n";
+            case "STRIKETHROUGH" -> "§m";
+            case "MAGIC" -> "§k";
+            default -> "§f"; // Default to white
+        };
     }
 
     private void setupListener() {

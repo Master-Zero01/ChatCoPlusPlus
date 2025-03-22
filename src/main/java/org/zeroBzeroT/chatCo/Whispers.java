@@ -19,7 +19,6 @@ import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 import static org.zeroBzeroT.chatCo.Utils.now;
 import static org.zeroBzeroT.chatCo.Utils.stripColor;
 
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -137,8 +136,27 @@ public record Whispers(Main plugin) implements Listener {
         }
 
         for (Map.Entry<String, TextColor> entry : colorMap.entrySet()) {
-            Component colorComponent = Component.text("").color(entry.getValue());
-            String legacyColorCode = LegacyComponentSerializer.legacySection().serialize(colorComponent).substring(0, 2);
+            String colorName = entry.getKey().replace("%", "");
+            // Use hardcoded fallbacks for reliability
+            String legacyColorCode = switch (colorName) {
+                case "BLACK" -> "§0";
+                case "DARK_BLUE" -> "§1";
+                case "DARK_GREEN" -> "§2";
+                case "DARK_AQUA" -> "§3";
+                case "DARK_RED" -> "§4";
+                case "DARK_PURPLE" -> "§5";
+                case "GOLD" -> "§6";
+                case "GRAY" -> "§7";
+                case "DARK_GRAY" -> "§8";
+                case "BLUE" -> "§9";
+                case "GREEN" -> "§a";
+                case "AQUA" -> "§b";
+                case "RED" -> "§c";
+                case "LIGHT_PURPLE" -> "§d";
+                case "YELLOW" -> "§e";
+                case "WHITE" -> "§f";
+                default -> "§f"; // Default to white if unknown
+            };
             legacyMessage = legacyMessage.replace(entry.getKey(), legacyColorCode);
         }
 
