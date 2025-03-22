@@ -130,7 +130,7 @@ public record Whispers(Main plugin) implements Listener {
     public TextComponent whisperFormat(Boolean send, final Player sender, final Player target) {
         Objects.requireNonNull(sender, "Sender cannot be null");
         Objects.requireNonNull(target, "Target cannot be null");
-        
+
         String legacyMessage = send ? plugin.getConfig().getString("ChatCo.whisperFormat.send") : plugin.getConfig().getString("ChatCo.whisperFormat.receive");
         if (legacyMessage == null) {
             legacyMessage = send ? "&7To &f%RECEIVER%&7: " : "&7From &f%SENDER%&7: ";
@@ -144,7 +144,7 @@ public record Whispers(Main plugin) implements Listener {
 
         String senderName = sender.getName();
         String targetName = target.getName();
-        
+
         if (send) {
             legacyMessage = legacyMessage.replace("%SENDER%", senderName);
             legacyMessage = legacyMessage.replace("%RECEIVER%", targetName);

@@ -20,10 +20,10 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public class Utils {
     public static final String DATE_FORMAT_NOW = "yyyy-MM-dd HH:mm:ss";
-    
+
     // Map of legacy color names to Adventure TextColor objects
     private static final Map<String, TextColor> NAMED_COLORS = new HashMap<>();
-    
+
     static {
         // Standard Minecraft colors (matching legacy ChatColor names)
         NAMED_COLORS.put("BLACK", TextColor.color(0, 0, 0));
@@ -43,7 +43,7 @@ public class Utils {
         NAMED_COLORS.put("YELLOW", TextColor.color(255, 255, 85));
         NAMED_COLORS.put("WHITE", TextColor.color(255, 255, 255));
     }
-    
+
     /**
      * Gets a TextColor by its legacy color name
      *
@@ -53,7 +53,7 @@ public class Utils {
     public static TextColor getColorByName(String colorName) {
         return NAMED_COLORS.get(colorName.toUpperCase());
     }
-    
+
     /**
      * Get all available named colors
      *
@@ -62,7 +62,7 @@ public class Utils {
     public static Map<String, TextColor> getNamedColors() {
         return new HashMap<>(NAMED_COLORS);
     }
-    
+
     /**
      * Strip color formatting from a string (replaces ChatColor.stripColor)
      *
@@ -94,17 +94,17 @@ public class Utils {
     public static TextComponent componentFromLegacyText(String legacyText) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(legacyText);
     }
-    
+
     /**
      * Convert a legacy color code string to its modern representation (replaces ChatColor.toString())
-     * 
+     *
      * @param colorName - the name of the color (e.g., "RED", "GOLD")
      * @return the legacy color code string
      */
     public static String colorToString(String colorName) {
         TextColor color = getColorByName(colorName);
         if (color == null) return "";
-        
+
         // Convert back to legacy format for compatibility
         Component component = Component.text("").color(color);
         return LegacyComponentSerializer.legacySection().serialize(component).substring(0, 2);
@@ -118,9 +118,9 @@ public class Utils {
             Main.getPlugin(Main.class).getLogger().warning("Cannot save stream to file: stream or file is null");
             return;
         }
-        
+
         try (OutputStream out = Files.newOutputStream(file.toPath());
-             InputStream in = stream) {
+            InputStream in = stream) {
             final byte[] buf = new byte[1024];
             int len;
 

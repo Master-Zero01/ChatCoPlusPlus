@@ -36,7 +36,7 @@ public class ChatPlayer {
         // Initialize ignore list file
         initializeIgnoreList();
     }
-    
+
     // Private initialization method to avoid overridable method call in constructor
     private void initializeIgnoreList() throws IOException {
         File oldIgnores = new File(Main.dataFolder, "/ignorelists/" + this.player.getName() + ".txt");
@@ -50,7 +50,7 @@ public class ChatPlayer {
             this.IgnoreList.getParentFile().mkdir();
             this.IgnoreList.createNewFile();
         }
-        
+
         // Initialize the ignores list
         updateIgnoreList();
     }
@@ -60,7 +60,7 @@ public class ChatPlayer {
         if (!p.isEmpty()) {
             if (!this.isIgnored(p)) {
                 try (FileWriter fwo = new FileWriter(this.IgnoreList, true);
-                     BufferedWriter bwo = new BufferedWriter(fwo)) {
+                    BufferedWriter bwo = new BufferedWriter(fwo)) {
                     bwo.write(p);
                     bwo.newLine();
                 }
@@ -68,7 +68,7 @@ public class ChatPlayer {
                 this.ignores.remove(p);
                 this.ignores.remove("");
                 try (FileWriter fwo = new FileWriter(this.IgnoreList);
-                     BufferedWriter bwo = new BufferedWriter(fwo)) {
+                    BufferedWriter bwo = new BufferedWriter(fwo)) {
                     for (final String print : this.ignores) {
                         bwo.write(print);
                         bwo.newLine();
@@ -82,7 +82,7 @@ public class ChatPlayer {
 
     public void unIgnoreAll() throws IOException {
         try (FileWriter fwo = new FileWriter(this.IgnoreList, false);
-             BufferedWriter bwo = new BufferedWriter(fwo)) {
+            BufferedWriter bwo = new BufferedWriter(fwo)) {
             bwo.flush();
         }
 
@@ -115,9 +115,9 @@ public class ChatPlayer {
 
     private void updateIgnoreList() throws IOException {
         try (FileInputStream file = new FileInputStream(this.IgnoreList);
-             InputStreamReader fileReader = new InputStreamReader(file);
-             BufferedReader inIgnores = new BufferedReader(fileReader)) {
-            
+            InputStreamReader fileReader = new InputStreamReader(file);
+            BufferedReader inIgnores = new BufferedReader(fileReader)) {
+
             String data = inIgnores.readLine();
             this.ignores = new ArrayList<>();
 

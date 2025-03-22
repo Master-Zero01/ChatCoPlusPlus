@@ -29,10 +29,10 @@ public class Announcer {
     private int delay;
     private int currentIndex;
     private BukkitRunnable announcementTask;
-    
+
     // Map to convert color names to TextColor objects
     private static final Map<String, TextColor> NAMED_COLORS = new HashMap<>();
-    
+
     static {
         NAMED_COLORS.put("BLACK", NamedTextColor.BLACK);
         NAMED_COLORS.put("DARK_BLUE", NamedTextColor.DARK_BLUE);
@@ -65,7 +65,7 @@ public class Announcer {
         // Use a private initialization method instead of calling an overridable method
         initialize();
     }
-    
+
     // Private initialization method to avoid overridable method call in constructor
     private void initialize() {
         // Cancel existing task if it exists
@@ -124,7 +124,7 @@ public class Announcer {
 
     private Component parseMessage(String message) {
         TextComponent.Builder builder = Component.text();
-        
+
         // Add prefix
         builder.append(componentFromLegacyText(prefix + " "));
 
@@ -145,14 +145,14 @@ public class Announcer {
 
             // Create clickable domain component with formatting
             Component urlComponent = Component.text(domain);
-            
+
             // Apply formatting from before the URL
             String formatBefore = getFormatBefore(message, urlMatcher.start());
             urlComponent = applyFormatting(urlComponent, formatBefore);
 
             // Set click and hover events
             urlComponent = urlComponent.clickEvent(ClickEvent.openUrl(fullUrl))
-                           .hoverEvent(HoverEvent.showText(Component.text("Click to visit " + fullUrl)));
+            .hoverEvent(HoverEvent.showText(Component.text("Click to visit " + fullUrl)));
 
             builder.append(urlComponent);
             lastEnd = urlMatcher.end();
@@ -184,13 +184,13 @@ public class Announcer {
 
     private Component applyFormatting(Component component, String formatting) {
         Matcher matcher = FORMAT_PATTERN.matcher(formatting);
-        
+
         // Start with the original component
         Component formattedComponent = component;
-        
+
         while (matcher.find()) {
             String tag = matcher.group(1);
-            
+
             if (FORMAT_TAGS.contains(tag)) {
                 // Convert to rule-based switch expression
                 formattedComponent = switch (tag) {
@@ -208,14 +208,14 @@ public class Announcer {
                 plugin.getLogger().log(Level.WARNING, "Invalid tag: {0}", tag);
             }
         }
-        
+
         return formattedComponent;
     }
 
     private String parseFormatting(String message) {
         // First, handle legacy color codes
         message = LegacyComponentSerializer.legacyAmpersand().serialize(
-                 LegacyComponentSerializer.legacyAmpersand().deserialize(message));
+            LegacyComponentSerializer.legacyAmpersand().deserialize(message));
 
         Matcher matcher = FORMAT_PATTERN.matcher(message);
         StringBuffer result = new StringBuffer();
@@ -239,7 +239,7 @@ public class Announcer {
                 }
             } catch (Exception e) {
                 // Use proper formatted logging
-                plugin.getLogger().log(Level.WARNING, "Error processing tag in announcement: {0} - {1}", 
+                plugin.getLogger().log(Level.WARNING, "Error processing tag in announcement: {0} - {1}",
                         new Object[]{tag, e.getMessage()});
                 matcher.appendReplacement(result, "");
             }
@@ -248,7 +248,7 @@ public class Announcer {
 
         return result.toString();
     }
-    
+
     private String getFormattingCode(String format) {
         // Handle all format cases with proper null safety
         TextDecoration decoration = switch (format) {
@@ -262,7 +262,7 @@ public class Announcer {
                 yield TextDecoration.ITALIC; // Default to a safe decoration as fallback
             }
         };
-        
+
         Component component = Component.text().decoration(decoration, true).build();
         return LegacyComponentSerializer.legacySection().serialize(component);
     }

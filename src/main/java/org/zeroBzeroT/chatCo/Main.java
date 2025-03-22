@@ -91,24 +91,24 @@ public class Main extends JavaPlugin {
             return;
         }
 
-        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this, 
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this,
                 PacketType.Play.Client.CHAT_COMMAND) {
             @Override
             public void onPacketReceiving(PacketEvent event) {
                 String command = event.getPacket().getStrings().read(0);
-                
+
                 // Check if it's a kill command
                 if (command.equalsIgnoreCase("kill")) {
                     Player player = event.getPlayer();
-                    
+
                     // Let vanilla handle everything for OPs
                     if (player.isOp()) {
                         return;
                     }
-                    
+
                     // For non-OPs, handle with our custom logic
                     event.setCancelled(true);
-                    
+
                     // Schedule our custom kill logic
                     new BukkitRunnable() {
                         @Override
@@ -116,7 +116,7 @@ public class Main extends JavaPlugin {
                             if (!getConfig().getBoolean("ChatCo.suicideCommand", true)) {
                                 return;
                             }
-                            
+
                             Optional.ofNullable(player.getVehicle()).ifPresent(Entity::eject);
                             EntityDamageEvent.DamageCause[] causes = EntityDamageEvent.DamageCause.values();
                             EntityDamageEvent.DamageCause randomCause = causes[new Random().nextInt(causes.length)];

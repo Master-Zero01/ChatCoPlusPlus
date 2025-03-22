@@ -29,7 +29,7 @@ public class BlackholeModule implements Listener {
             settings.add(HIDDEN_SETTING);
         }
         playerSettings.put(uuid, settings);
-        
+
         // Immediately update config
         plugin.getConfig().set("blacklist_settings." + uuid, settings);
         plugin.saveConfig();
@@ -38,7 +38,7 @@ public class BlackholeModule implements Listener {
     public static void removePlayerFromBlacklist(Player player) {
         String uuid = player.getUniqueId().toString();
         playerSettings.remove(uuid);
-        
+
         // Ensure the entry is removed from config
         plugin.getConfig().set("blacklist_settings." + uuid, null);
         plugin.saveConfig();
@@ -56,15 +56,15 @@ public class BlackholeModule implements Listener {
     public static void setPlayerHidden(Player player, boolean hidden) {
         String uuid = player.getUniqueId().toString();
         List<String> settings = playerSettings.getOrDefault(uuid, new ArrayList<>());
-        
+
         if (hidden && !settings.contains(HIDDEN_SETTING)) {
             settings.add(HIDDEN_SETTING);
         } else if (!hidden) {
             settings.remove(HIDDEN_SETTING);
         }
-        
+
         playerSettings.put(uuid, settings);
-        
+
         // Immediately update config
         plugin.getConfig().set("blacklist_settings." + uuid, settings);
         plugin.saveConfig();
@@ -77,7 +77,7 @@ public class BlackholeModule implements Listener {
 
     private static void loadSettings() {
         playerSettings.clear();
-        
+
         // Load from config
         if (plugin.getConfig().contains("blacklist_settings")) {
             ConfigurationSection section = plugin.getConfig().getConfigurationSection("blacklist_settings");
