@@ -67,11 +67,12 @@ ChatCo:
   announcements:
     enabled: true
     prefix: "&6[Anarchadia]"
-    delay: 300
+    delay: 600
     messages:
       - '<GREEN>Join our Discord <RED>@ <UNDERLINE><AQUA>https://discord.anarchadia.org'
       - '<GREEN>Visit our website: <UNDERLINE><AQUA>https://anarchadia.org<RESET> <GREEN>for updates!'
       - '<GREEN>Wonder what your joindate is? Try <AQUA>/joindate <GREEN>to see yours!'
+      - '<GREEN>Need someone to talk with? Message our very own <AQUA>Olygarchist <GREEN>to chat with AI!'
 
 # Available formatting tags:
 # <BOLD>        - Makes text bold
