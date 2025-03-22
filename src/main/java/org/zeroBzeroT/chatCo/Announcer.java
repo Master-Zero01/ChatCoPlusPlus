@@ -1,25 +1,24 @@
 package org.zeroBzeroT.chatCo;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import static org.zeroBzeroT.chatCo.Utils.FORMAT_PATTERN;
+import static org.zeroBzeroT.chatCo.Utils.URL_PATTERN;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
+import static org.zeroBzeroT.chatCo.Utils.isValidColor;
+import static org.zeroBzeroT.chatCo.Utils.isValidFormat;
+import static org.zeroBzeroT.chatCo.Utils.parseFormattingTags;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public class Announcer {
@@ -29,35 +28,6 @@ public class Announcer {
     private int delay;
     private int currentIndex;
     private BukkitRunnable announcementTask;
-
-    // Map to convert color names to TextColor objects
-    private static final Map<String, TextColor> NAMED_COLORS = new HashMap<>();
-
-    static {
-        NAMED_COLORS.put("BLACK", NamedTextColor.BLACK);
-        NAMED_COLORS.put("DARK_BLUE", NamedTextColor.DARK_BLUE);
-        NAMED_COLORS.put("DARK_GREEN", NamedTextColor.DARK_GREEN);
-        NAMED_COLORS.put("DARK_AQUA", NamedTextColor.DARK_AQUA);
-        NAMED_COLORS.put("DARK_RED", NamedTextColor.DARK_RED);
-        NAMED_COLORS.put("DARK_PURPLE", NamedTextColor.DARK_PURPLE);
-        NAMED_COLORS.put("GOLD", NamedTextColor.GOLD);
-        NAMED_COLORS.put("GRAY", NamedTextColor.GRAY);
-        NAMED_COLORS.put("DARK_GRAY", NamedTextColor.DARK_GRAY);
-        NAMED_COLORS.put("BLUE", NamedTextColor.BLUE);
-        NAMED_COLORS.put("GREEN", NamedTextColor.GREEN);
-        NAMED_COLORS.put("AQUA", NamedTextColor.AQUA);
-        NAMED_COLORS.put("RED", NamedTextColor.RED);
-        NAMED_COLORS.put("LIGHT_PURPLE", NamedTextColor.LIGHT_PURPLE);
-        NAMED_COLORS.put("YELLOW", NamedTextColor.YELLOW);
-        NAMED_COLORS.put("WHITE", NamedTextColor.WHITE);
-    }
-
-    private static final Pattern FORMAT_PATTERN = Pattern.compile("<([A-Z_]+)>");
-    private static final Pattern URL_PATTERN = Pattern.compile("(https?://)([-\\w.]+)(/\\S*)?");
-
-    private static final List<String> FORMAT_TAGS = List.of(
-            "BOLD", "ITALIC", "UNDERLINE", "STRIKETHROUGH", "MAGIC"
-    );
 
     public Announcer(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -76,7 +46,7 @@ public class Announcer {
 
         FileConfiguration config = plugin.getConfig();
         announcements = config.getStringList("ChatCo.announcements.messages");
-        prefix = "&6[&eAnarchadia&6]"; // Using & format for legacy color codes
+        prefix = config.getString("ChatCo.announcements.prefix", "&6[&eAnarchadia&6]");
         delay = config.getInt("ChatCo.announcements.delay", 300);
         currentIndex = 0;  // Reset index on reload
 
@@ -135,7 +105,7 @@ public class Announcer {
             // Add text before the URL
             String beforeUrl = message.substring(lastEnd, urlMatcher.start());
             if (!beforeUrl.isEmpty()) {
-                builder.append(LegacyComponentSerializer.legacyAmpersand().deserialize(parseFormatting(beforeUrl)));
+                builder.append(LegacyComponentSerializer.legacyAmpersand().deserialize(parseFormattingTags(beforeUrl)));
             }
 
             String protocol = urlMatcher.group(1);
@@ -148,7 +118,7 @@ public class Announcer {
 
             // Apply formatting from before the URL
             String formatBefore = getFormatBefore(message, urlMatcher.start());
-            urlComponent = applyFormatting(urlComponent, formatBefore);
+            urlComponent = applyFormattingFromString(urlComponent, formatBefore);
 
             // Set click and hover events
             urlComponent = urlComponent.clickEvent(ClickEvent.openUrl(fullUrl))
@@ -160,7 +130,7 @@ public class Announcer {
 
         // Add remaining text after the last URL
         if (lastEnd < message.length()) {
-            builder.append(LegacyComponentSerializer.legacyAmpersand().deserialize(parseFormatting(message.substring(lastEnd))));
+            builder.append(LegacyComponentSerializer.legacyAmpersand().deserialize(parseFormattingTags(message.substring(lastEnd))));
         }
 
         return builder.build();
@@ -171,18 +141,14 @@ public class Announcer {
         Matcher matcher = FORMAT_PATTERN.matcher(message.substring(0, position));
         while (matcher.find()) {
             String tag = matcher.group(1);
-            if (FORMAT_TAGS.contains(tag) || isValidColor(tag)) {
+            if (isValidFormat(tag) || isValidColor(tag)) {
                 format.append("<").append(tag).append(">");
             }
         }
         return format.toString();
     }
 
-    private boolean isValidColor(String tag) {
-        return NAMED_COLORS.containsKey(tag);
-    }
-
-    private Component applyFormatting(Component component, String formatting) {
+    private Component applyFormattingFromString(Component component, String formatting) {
         Matcher matcher = FORMAT_PATTERN.matcher(formatting);
 
         // Start with the original component
@@ -190,98 +156,10 @@ public class Announcer {
 
         while (matcher.find()) {
             String tag = matcher.group(1);
-
-            if (FORMAT_TAGS.contains(tag)) {
-                // Convert to rule-based switch expression
-                formattedComponent = switch (tag) {
-                    case "BOLD" -> formattedComponent.decoration(TextDecoration.BOLD, true);
-                    case "ITALIC" -> formattedComponent.decoration(TextDecoration.ITALIC, true);
-                    case "UNDERLINE" -> formattedComponent.decoration(TextDecoration.UNDERLINED, true);
-                    case "STRIKETHROUGH" -> formattedComponent.decoration(TextDecoration.STRIKETHROUGH, true);
-                    case "MAGIC" -> formattedComponent.decoration(TextDecoration.OBFUSCATED, true);
-                    default -> formattedComponent;
-                };
-            } else if (isValidColor(tag)) {
-                formattedComponent = formattedComponent.color(NAMED_COLORS.get(tag));
-            } else {
-                // Use proper formatted logging
-                plugin.getLogger().log(Level.WARNING, "Invalid tag: {0}", tag);
-            }
+            formattedComponent = Utils.applyFormatting(formattedComponent, tag);
         }
 
         return formattedComponent;
-    }
-
-    private String parseFormatting(String message) {
-        // First, handle legacy color codes
-        message = LegacyComponentSerializer.legacyAmpersand().serialize(
-            LegacyComponentSerializer.legacyAmpersand().deserialize(message));
-
-        Matcher matcher = FORMAT_PATTERN.matcher(message);
-        StringBuffer result = new StringBuffer();
-
-        while (matcher.find()) {
-            String tag = matcher.group(1);
-            try {
-                if (FORMAT_TAGS.contains(tag)) {
-                    // Apply formatting
-                    String replacementCode = getFormattingCode(tag);
-                    matcher.appendReplacement(result, replacementCode);
-                } else if (isValidColor(tag)) {
-                    // Apply color using hardcoded fallbacks for reliability
-                    String legacyColorCode = switch (tag) {
-                        case "BLACK" -> "§0";
-                        case "DARK_BLUE" -> "§1";
-                        case "DARK_GREEN" -> "§2";
-                        case "DARK_AQUA" -> "§3";
-                        case "DARK_RED" -> "§4";
-                        case "DARK_PURPLE" -> "§5";
-                        case "GOLD" -> "§6";
-                        case "GRAY" -> "§7";
-                        case "DARK_GRAY" -> "§8";
-                        case "BLUE" -> "§9";
-                        case "GREEN" -> "§a";
-                        case "AQUA" -> "§b";
-                        case "RED" -> "§c";
-                        case "LIGHT_PURPLE" -> "§d";
-                        case "YELLOW" -> "§e";
-                        case "WHITE" -> "§f";
-                        default -> "§f"; // Default to white if unknown
-                    };
-                    matcher.appendReplacement(result, legacyColorCode);
-                } else {
-                    // Use proper formatted logging
-                    plugin.getLogger().log(Level.WARNING, "Invalid tag in announcement: {0}", tag);
-                    matcher.appendReplacement(result, "");
-                }
-            } catch (Exception e) {
-                // Use proper formatted logging
-                plugin.getLogger().log(Level.WARNING, "Error processing tag in announcement: {0} - {1}",
-                        new Object[]{tag, e.getMessage()});
-                matcher.appendReplacement(result, "");
-            }
-        }
-        matcher.appendTail(result);
-
-        return result.toString();
-    }
-
-    private String getFormattingCode(String format) {
-        // Handle all format cases with proper null safety
-        TextDecoration decoration = switch (format) {
-            case "BOLD" -> TextDecoration.BOLD;
-            case "ITALIC" -> TextDecoration.ITALIC;
-            case "UNDERLINE" -> TextDecoration.UNDERLINED;
-            case "STRIKETHROUGH" -> TextDecoration.STRIKETHROUGH;
-            case "MAGIC" -> TextDecoration.OBFUSCATED;
-            default -> {
-                plugin.getLogger().log(Level.WARNING, "Unknown format tag: {0}", format);
-                yield TextDecoration.ITALIC; // Default to a safe decoration as fallback
-            }
-        };
-
-        Component component = Component.text().decoration(decoration, true).build();
-        return LegacyComponentSerializer.legacySection().serialize(component);
     }
 
     public void disable() {

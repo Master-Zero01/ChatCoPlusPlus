@@ -11,6 +11,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
+import static org.zeroBzeroT.chatCo.Utils.getDirectColorCode;
+import static org.zeroBzeroT.chatCo.Utils.parseFormattingTags;
 import static org.zeroBzeroT.chatCo.Utils.stripColor;
 
 import com.comphenix.protocol.PacketType;
@@ -43,9 +45,7 @@ public class PublicChat implements Listener {
             if (prefix != null && message.startsWith(prefix)) {
                 // check for global or player permission
                 if (permissionConfig.getBoolean("ChatCo.chatPrefixes." + colorName, false) || player.hasPermission("ChatCo.chatPrefixes." + colorName)) {
-                    // Use hardcoded color code for reliability
-                    String colorCode = getDirectColorCode(colorName);
-                    message = colorCode + message;
+                    message = getDirectColorCode(colorName) + message;
                 }
 
                 // break here since we found a prefix color code
@@ -60,43 +60,11 @@ public class PublicChat implements Listener {
         for (String colorName : Utils.getNamedColors().keySet()) {
             String configColorCode = plugin.getConfig().getString("ChatCo.chatColors." + colorName);
             if (configColorCode != null && (permissionConfig.getBoolean("ChatCo.chatColors." + colorName, false) || player.hasPermission("ChatCo.chatColors." + colorName))) {
-                // Use hardcoded color code for reliability
-                String colorCode = getDirectColorCode(colorName);
-                message = message.replace(configColorCode, colorCode);
+                message = message.replace(configColorCode, getDirectColorCode(colorName));
             }
         }
 
         return message;
-    }
-
-    /**
-     * Get direct color code string without using serialization
-     */
-    private String getDirectColorCode(String colorName) {
-        return switch (colorName.toUpperCase()) {
-            case "BLACK" -> "§0";
-            case "DARK_BLUE" -> "§1";
-            case "DARK_GREEN" -> "§2";
-            case "DARK_AQUA" -> "§3";
-            case "DARK_RED" -> "§4";
-            case "DARK_PURPLE" -> "§5";
-            case "GOLD" -> "§6";
-            case "GRAY" -> "§7";
-            case "DARK_GRAY" -> "§8";
-            case "BLUE" -> "§9";
-            case "GREEN" -> "§a";
-            case "AQUA" -> "§b";
-            case "RED" -> "§c";
-            case "LIGHT_PURPLE" -> "§d";
-            case "YELLOW" -> "§e";
-            case "WHITE" -> "§f";
-            case "BOLD" -> "§l";
-            case "ITALIC" -> "§o";
-            case "UNDERLINE" -> "§n";
-            case "STRIKETHROUGH" -> "§m";
-            case "MAGIC" -> "§k";
-            default -> "§f"; // Default to white
-        };
     }
 
     private void setupListener() {
@@ -111,9 +79,17 @@ public class PublicChat implements Listener {
                 Player player = event.getPlayer();
                 String message = event.getPacket().getStrings().read(0);
 
+                // Convert to legacy format
                 String legacyMessage = LegacyComponentSerializer.legacyAmpersand().serialize(Component.text(message));
+                
+                // Apply prefix colors
                 legacyMessage = replacePrefixColors(legacyMessage, player);
+                
+                // Apply inline colors
                 legacyMessage = replaceInlineColors(legacyMessage, player);
+                
+                // Parse any formatting tags like <BOLD>, <UNDERLINE>, etc.
+                legacyMessage = parseFormattingTags(legacyMessage);
 
                 if (stripColor(legacyMessage).trim().isEmpty()) {
                     event.setCancelled(true);

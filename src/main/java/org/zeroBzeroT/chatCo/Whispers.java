@@ -16,40 +16,23 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
+import static org.zeroBzeroT.chatCo.Utils.getDirectColorCode;
 import static org.zeroBzeroT.chatCo.Utils.now;
+import static org.zeroBzeroT.chatCo.Utils.parseFormattingTags;
 import static org.zeroBzeroT.chatCo.Utils.stripColor;
 
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public record Whispers(Main plugin) implements Listener {
 
-    private static Map<String, TextColor> colorMap = Map.of();
+    private static final Map<String, String> COLOR_PLACEHOLDER_MAP = new HashMap<>();
 
-    public Whispers(Main plugin) {
-        this.plugin = plugin;
-        colorMap = new HashMap<>();
-        initializeColorMap();
-    }
-
-    private void initializeColorMap() {
-        colorMap.put("%BLACK%", TextColor.color(0, 0, 0));
-        colorMap.put("%DARK_BLUE%", TextColor.color(0, 0, 170));
-        colorMap.put("%DARK_GREEN%", TextColor.color(0, 170, 0));
-        colorMap.put("%DARK_AQUA%", TextColor.color(0, 170, 170));
-        colorMap.put("%DARK_RED%", TextColor.color(170, 0, 0));
-        colorMap.put("%DARK_PURPLE%", TextColor.color(170, 0, 170));
-        colorMap.put("%GOLD%", TextColor.color(255, 170, 0));
-        colorMap.put("%GRAY%", TextColor.color(170, 170, 170));
-        colorMap.put("%DARK_GRAY%", TextColor.color(85, 85, 85));
-        colorMap.put("%BLUE%", TextColor.color(85, 85, 255));
-        colorMap.put("%GREEN%", TextColor.color(85, 255, 85));
-        colorMap.put("%AQUA%", TextColor.color(85, 255, 255));
-        colorMap.put("%RED%", TextColor.color(255, 85, 85));
-        colorMap.put("%LIGHT_PURPLE%", TextColor.color(255, 85, 255));
-        colorMap.put("%YELLOW%", TextColor.color(255, 255, 85));
-        colorMap.put("%WHITE%", TextColor.color(255, 255, 255));
+    static {
+        // Initialize the color placeholder map
+        for (String colorName : Utils.getNamedColors().keySet()) {
+            COLOR_PLACEHOLDER_MAP.put("%" + colorName + "%", colorName);
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -135,29 +118,10 @@ public record Whispers(Main plugin) implements Listener {
             legacyMessage = send ? "&7To &f%RECEIVER%&7: " : "&7From &f%SENDER%&7: ";
         }
 
-        for (Map.Entry<String, TextColor> entry : colorMap.entrySet()) {
-            String colorName = entry.getKey().replace("%", "");
-            // Use hardcoded fallbacks for reliability
-            String legacyColorCode = switch (colorName) {
-                case "BLACK" -> "§0";
-                case "DARK_BLUE" -> "§1";
-                case "DARK_GREEN" -> "§2";
-                case "DARK_AQUA" -> "§3";
-                case "DARK_RED" -> "§4";
-                case "DARK_PURPLE" -> "§5";
-                case "GOLD" -> "§6";
-                case "GRAY" -> "§7";
-                case "DARK_GRAY" -> "§8";
-                case "BLUE" -> "§9";
-                case "GREEN" -> "§a";
-                case "AQUA" -> "§b";
-                case "RED" -> "§c";
-                case "LIGHT_PURPLE" -> "§d";
-                case "YELLOW" -> "§e";
-                case "WHITE" -> "§f";
-                default -> "§f"; // Default to white if unknown
-            };
-            legacyMessage = legacyMessage.replace(entry.getKey(), legacyColorCode);
+        // Replace color placeholders with actual color codes
+        for (Map.Entry<String, String> entry : COLOR_PLACEHOLDER_MAP.entrySet()) {
+            String colorName = entry.getValue();
+            legacyMessage = legacyMessage.replace(entry.getKey(), getDirectColorCode(colorName));
         }
 
         String senderName = sender.getName();
@@ -190,7 +154,10 @@ public record Whispers(Main plugin) implements Listener {
         TextComponent senderMessage = whisperFormat(true, sender, receiver);
         TextComponent receiverMessage = whisperFormat(false, sender, receiver);
 
-        TextComponent coloredMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(message);
+        // Apply color codes from the message and parse any formatting tags
+        message = parseFormattingTags(message);
+        TextComponent coloredMessage = LegacyComponentSerializer.legacySection().deserialize(message);
+        
         receiverMessage = receiverMessage.append(coloredMessage);
         senderMessage = senderMessage.append(coloredMessage);
 
