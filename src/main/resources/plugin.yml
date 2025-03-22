@@ -24,8 +24,8 @@ commands:
     description: Returns a list of all currently ignored players.
     usage: /ignorelist
   chatco:
-    description: Enables or disables whispers and spoilers. Only console input accepted. 'e' enables, 'd' disables.
-    usage: /chatco <whispers|spoilers|newcommands|whisperlog> <e|d>
+    description: Plugin configuration commands. Only console input accepted. 'e' enables, 'd' disables.
+    usage: /chatco <whispers|newcommands|whisperlog> <e|d>
   whisper:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player

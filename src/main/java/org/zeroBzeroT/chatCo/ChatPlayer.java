@@ -1,12 +1,18 @@
 package org.zeroBzeroT.chatCo;
 
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 public class ChatPlayer {
     public final Player player;
@@ -25,13 +31,14 @@ public class ChatPlayer {
         tellsDisabled = false;
         LastMessenger = null;
         LastReceiver = null;
+        ignores = new ArrayList<>();
 
-        // create the ignore-list
-        saveIgnoreList("");
+        // Initialize ignore list file
+        initializeIgnoreList();
     }
-
-    @SuppressWarnings("ResultOfMethodCallIgnored")
-    public void saveIgnoreList(final String p) throws IOException {
+    
+    // Private initialization method to avoid overridable method call in constructor
+    private void initializeIgnoreList() throws IOException {
         File oldIgnores = new File(Main.dataFolder, "/ignorelists/" + this.player.getName() + ".txt");
         this.IgnoreList = new File(Main.dataFolder, "/ignorelists/" + this.playerUUID + ".txt");
 
@@ -41,30 +48,32 @@ public class ChatPlayer {
 
         if (!this.IgnoreList.exists()) {
             this.IgnoreList.getParentFile().mkdir();
-            final FileWriter fwo = new FileWriter(this.IgnoreList, true);
-            final BufferedWriter bwo = new BufferedWriter(fwo);
-            bwo.close();
+            this.IgnoreList.createNewFile();
         }
+        
+        // Initialize the ignores list
+        updateIgnoreList();
+    }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void saveIgnoreList(final String p) throws IOException {
         if (!p.isEmpty()) {
             if (!this.isIgnored(p)) {
-                final FileWriter fwo = new FileWriter(this.IgnoreList, true);
-                final BufferedWriter bwo = new BufferedWriter(fwo);
-                bwo.write(p);
-                bwo.newLine();
-                bwo.close();
+                try (FileWriter fwo = new FileWriter(this.IgnoreList, true);
+                     BufferedWriter bwo = new BufferedWriter(fwo)) {
+                    bwo.write(p);
+                    bwo.newLine();
+                }
             } else {
                 this.ignores.remove(p);
                 this.ignores.remove("");
-                final FileWriter fwo = new FileWriter(this.IgnoreList);
-                final BufferedWriter bwo = new BufferedWriter(fwo);
-
-                for (final String print : this.ignores) {
-                    bwo.write(print);
-                    bwo.newLine();
+                try (FileWriter fwo = new FileWriter(this.IgnoreList);
+                     BufferedWriter bwo = new BufferedWriter(fwo)) {
+                    for (final String print : this.ignores) {
+                        bwo.write(print);
+                        bwo.newLine();
+                    }
                 }
-
-                bwo.close();
             }
         }
 
@@ -72,10 +81,10 @@ public class ChatPlayer {
     }
 
     public void unIgnoreAll() throws IOException {
-        final FileWriter fwo = new FileWriter(this.IgnoreList, false);
-        final BufferedWriter bwo = new BufferedWriter(fwo);
-        bwo.flush();
-        bwo.close();
+        try (FileWriter fwo = new FileWriter(this.IgnoreList, false);
+             BufferedWriter bwo = new BufferedWriter(fwo)) {
+            bwo.flush();
+        }
 
         this.updateIgnoreList();
     }
@@ -105,18 +114,18 @@ public class ChatPlayer {
     }
 
     private void updateIgnoreList() throws IOException {
-        final FileInputStream file = new FileInputStream(this.IgnoreList);
-        final InputStreamReader fileReader = new InputStreamReader(file);
-        final BufferedReader inIgnores = new BufferedReader(fileReader);
-        String data = inIgnores.readLine();
-        this.ignores = new ArrayList<>();
+        try (FileInputStream file = new FileInputStream(this.IgnoreList);
+             InputStreamReader fileReader = new InputStreamReader(file);
+             BufferedReader inIgnores = new BufferedReader(fileReader)) {
+            
+            String data = inIgnores.readLine();
+            this.ignores = new ArrayList<>();
 
-        while (data != null) {
-            this.ignores.add(data);
-            data = inIgnores.readLine();
+            while (data != null) {
+                this.ignores.add(data);
+                data = inIgnores.readLine();
+            }
         }
-
-        file.close();
     }
 
     public boolean isIgnored(final String p) {

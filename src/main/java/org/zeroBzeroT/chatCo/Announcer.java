@@ -1,18 +1,26 @@
 package org.zeroBzeroT.chatCo;
 
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public class Announcer {
     private final JavaPlugin plugin;
@@ -21,6 +29,28 @@ public class Announcer {
     private int delay;
     private int currentIndex;
     private BukkitRunnable announcementTask;
+    
+    // Map to convert color names to TextColor objects
+    private static final Map<String, TextColor> NAMED_COLORS = new HashMap<>();
+    
+    static {
+        NAMED_COLORS.put("BLACK", NamedTextColor.BLACK);
+        NAMED_COLORS.put("DARK_BLUE", NamedTextColor.DARK_BLUE);
+        NAMED_COLORS.put("DARK_GREEN", NamedTextColor.DARK_GREEN);
+        NAMED_COLORS.put("DARK_AQUA", NamedTextColor.DARK_AQUA);
+        NAMED_COLORS.put("DARK_RED", NamedTextColor.DARK_RED);
+        NAMED_COLORS.put("DARK_PURPLE", NamedTextColor.DARK_PURPLE);
+        NAMED_COLORS.put("GOLD", NamedTextColor.GOLD);
+        NAMED_COLORS.put("GRAY", NamedTextColor.GRAY);
+        NAMED_COLORS.put("DARK_GRAY", NamedTextColor.DARK_GRAY);
+        NAMED_COLORS.put("BLUE", NamedTextColor.BLUE);
+        NAMED_COLORS.put("GREEN", NamedTextColor.GREEN);
+        NAMED_COLORS.put("AQUA", NamedTextColor.AQUA);
+        NAMED_COLORS.put("RED", NamedTextColor.RED);
+        NAMED_COLORS.put("LIGHT_PURPLE", NamedTextColor.LIGHT_PURPLE);
+        NAMED_COLORS.put("YELLOW", NamedTextColor.YELLOW);
+        NAMED_COLORS.put("WHITE", NamedTextColor.WHITE);
+    }
 
     private static final Pattern FORMAT_PATTERN = Pattern.compile("<([A-Z_]+)>");
     private static final Pattern URL_PATTERN = Pattern.compile("(https?://)([-\\w.]+)(/\\S*)?");
@@ -32,10 +62,12 @@ public class Announcer {
     public Announcer(JavaPlugin plugin) {
         this.plugin = plugin;
         this.currentIndex = 0;  // Initialize index
-        loadConfig();
+        // Use a private initialization method instead of calling an overridable method
+        initialize();
     }
-
-    public void loadConfig() {
+    
+    // Private initialization method to avoid overridable method call in constructor
+    private void initialize() {
         // Cancel existing task if it exists
         if (announcementTask != null) {
             announcementTask.cancel();
@@ -44,7 +76,7 @@ public class Announcer {
 
         FileConfiguration config = plugin.getConfig();
         announcements = config.getStringList("ChatCo.announcements.messages");
-        prefix = org.bukkit.ChatColor.GOLD + "[" + org.bukkit.ChatColor.YELLOW + "Anarchadia" + org.bukkit.ChatColor.GOLD + "]";
+        prefix = "&6[&eAnarchadia&6]"; // Using & format for legacy color codes
         delay = config.getInt("ChatCo.announcements.delay", 300);
         currentIndex = 0;  // Reset index on reload
 
@@ -54,9 +86,13 @@ public class Announcer {
         }
     }
 
+    public void loadConfig() {
+        initialize();
+    }
+
     private void startAnnouncementTask() {
         if (announcements == null || announcements.isEmpty()) {
-            plugin.getLogger().warning("No announcements configured!");
+            plugin.getLogger().log(Level.WARNING, "No announcements configured!");
             return;
         }
 
@@ -79,18 +115,18 @@ public class Announcer {
         String message = announcements.get(currentIndex);
 
         // Create and broadcast the component
-        TextComponent component = parseMessage(message);
-        Bukkit.spigot().broadcast(component);
+        Component component = parseMessage(message);
+        Bukkit.getServer().sendMessage(component);
 
         // Update index for next run
         currentIndex = (currentIndex + 1) % announcements.size();
     }
 
-    private TextComponent parseMessage(String message) {
-        ComponentBuilder builder = new ComponentBuilder();
-
+    private Component parseMessage(String message) {
+        TextComponent.Builder builder = Component.text();
+        
         // Add prefix
-        builder.append(prefix + " ");
+        builder.append(componentFromLegacyText(prefix + " "));
 
         Matcher urlMatcher = URL_PATTERN.matcher(message);
         int lastEnd = 0;
@@ -99,7 +135,7 @@ public class Announcer {
             // Add text before the URL
             String beforeUrl = message.substring(lastEnd, urlMatcher.start());
             if (!beforeUrl.isEmpty()) {
-                builder.append(TextComponent.fromLegacyText(parseFormatting(beforeUrl)));
+                builder.append(LegacyComponentSerializer.legacyAmpersand().deserialize(parseFormatting(beforeUrl)));
             }
 
             String protocol = urlMatcher.group(1);
@@ -107,17 +143,16 @@ public class Announcer {
             String path = urlMatcher.group(3) != null ? urlMatcher.group(3) : "";
             String fullUrl = protocol + domain + path;
 
-            // Create clickable domain component
-            TextComponent urlComponent = new TextComponent(domain);
-
+            // Create clickable domain component with formatting
+            Component urlComponent = Component.text(domain);
+            
             // Apply formatting from before the URL
             String formatBefore = getFormatBefore(message, urlMatcher.start());
-            applyFormatting(urlComponent, formatBefore);
+            urlComponent = applyFormatting(urlComponent, formatBefore);
 
             // Set click and hover events
-            urlComponent.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, fullUrl));
-            urlComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                    new ComponentBuilder("Click to visit " + fullUrl).create()));
+            urlComponent = urlComponent.clickEvent(ClickEvent.openUrl(fullUrl))
+                           .hoverEvent(HoverEvent.showText(Component.text("Click to visit " + fullUrl)));
 
             builder.append(urlComponent);
             lastEnd = urlMatcher.end();
@@ -125,10 +160,10 @@ public class Announcer {
 
         // Add remaining text after the last URL
         if (lastEnd < message.length()) {
-            builder.append(TextComponent.fromLegacyText(parseFormatting(message.substring(lastEnd))));
+            builder.append(LegacyComponentSerializer.legacyAmpersand().deserialize(parseFormatting(message.substring(lastEnd))));
         }
 
-        return new TextComponent(builder.create());
+        return builder.build();
     }
 
     private String getFormatBefore(String message, int position) {
@@ -144,38 +179,43 @@ public class Announcer {
     }
 
     private boolean isValidColor(String tag) {
-        try {
-            ChatColor.valueOf(tag);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+        return NAMED_COLORS.containsKey(tag);
     }
 
-    private void applyFormatting(TextComponent component, String formatting) {
+    private Component applyFormatting(Component component, String formatting) {
         Matcher matcher = FORMAT_PATTERN.matcher(formatting);
+        
+        // Start with the original component
+        Component formattedComponent = component;
+        
         while (matcher.find()) {
             String tag = matcher.group(1);
-            try {
-                if (FORMAT_TAGS.contains(tag)) {
-                    switch (tag) {
-                        case "BOLD": component.setBold(true); break;
-                        case "ITALIC": component.setItalic(true); break;
-                        case "UNDERLINE": component.setUnderlined(true); break;
-                        case "STRIKETHROUGH": component.setStrikethrough(true); break;
-                        case "MAGIC": component.setObfuscated(true); break;
-                    }
-                } else {
-                    component.setColor(ChatColor.valueOf(tag));
-                }
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid tag: <" + tag + ">");
+            
+            if (FORMAT_TAGS.contains(tag)) {
+                // Convert to rule-based switch expression
+                formattedComponent = switch (tag) {
+                    case "BOLD" -> formattedComponent.decoration(TextDecoration.BOLD, true);
+                    case "ITALIC" -> formattedComponent.decoration(TextDecoration.ITALIC, true);
+                    case "UNDERLINE" -> formattedComponent.decoration(TextDecoration.UNDERLINED, true);
+                    case "STRIKETHROUGH" -> formattedComponent.decoration(TextDecoration.STRIKETHROUGH, true);
+                    case "MAGIC" -> formattedComponent.decoration(TextDecoration.OBFUSCATED, true);
+                    default -> formattedComponent;
+                };
+            } else if (isValidColor(tag)) {
+                formattedComponent = formattedComponent.color(NAMED_COLORS.get(tag));
+            } else {
+                // Use proper formatted logging
+                plugin.getLogger().log(Level.WARNING, "Invalid tag: {0}", tag);
             }
         }
+        
+        return formattedComponent;
     }
 
     private String parseFormatting(String message) {
-        message = ChatColor.translateAlternateColorCodes('&', message);
+        // First, handle legacy color codes
+        message = LegacyComponentSerializer.legacyAmpersand().serialize(
+                 LegacyComponentSerializer.legacyAmpersand().deserialize(message));
 
         Matcher matcher = FORMAT_PATTERN.matcher(message);
         StringBuffer result = new StringBuffer();
@@ -184,20 +224,47 @@ public class Announcer {
             String tag = matcher.group(1);
             try {
                 if (FORMAT_TAGS.contains(tag)) {
-                    ChatColor format = ChatColor.valueOf(tag);
-                    matcher.appendReplacement(result, format.toString());
+                    // Apply formatting
+                    String replacementCode = getFormattingCode(tag);
+                    matcher.appendReplacement(result, replacementCode);
+                } else if (isValidColor(tag)) {
+                    // Apply color
+                    Component colorComponent = Component.text("").color(NAMED_COLORS.get(tag));
+                    String legacyColorCode = LegacyComponentSerializer.legacySection().serialize(colorComponent).substring(0, 2);
+                    matcher.appendReplacement(result, legacyColorCode);
                 } else {
-                    ChatColor color = ChatColor.valueOf(tag);
-                    matcher.appendReplacement(result, color.toString());
+                    // Use proper formatted logging
+                    plugin.getLogger().log(Level.WARNING, "Invalid tag in announcement: {0}", tag);
+                    matcher.appendReplacement(result, "");
                 }
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid tag in announcement: <" + tag + ">");
+            } catch (Exception e) {
+                // Use proper formatted logging
+                plugin.getLogger().log(Level.WARNING, "Error processing tag in announcement: {0} - {1}", 
+                        new Object[]{tag, e.getMessage()});
                 matcher.appendReplacement(result, "");
             }
         }
         matcher.appendTail(result);
 
         return result.toString();
+    }
+    
+    private String getFormattingCode(String format) {
+        // Handle all format cases with proper null safety
+        TextDecoration decoration = switch (format) {
+            case "BOLD" -> TextDecoration.BOLD;
+            case "ITALIC" -> TextDecoration.ITALIC;
+            case "UNDERLINE" -> TextDecoration.UNDERLINED;
+            case "STRIKETHROUGH" -> TextDecoration.STRIKETHROUGH;
+            case "MAGIC" -> TextDecoration.OBFUSCATED;
+            default -> {
+                plugin.getLogger().log(Level.WARNING, "Unknown format tag: {0}", format);
+                yield TextDecoration.ITALIC; // Default to a safe decoration as fallback
+            }
+        };
+        
+        Component component = Component.text().decoration(decoration, true).build();
+        return LegacyComponentSerializer.legacySection().serialize(component);
     }
 
     public void disable() {

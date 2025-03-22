@@ -1,10 +1,15 @@
 package org.zeroBzeroT.chatCo;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.*;
 
 public class BlackholeModule implements Listener {
 
@@ -75,13 +80,18 @@ public class BlackholeModule implements Listener {
         
         // Load from config
         if (plugin.getConfig().contains("blacklist_settings")) {
-            Map<String, Object> loadedData = plugin.getConfig().getConfigurationSection("blacklist_settings").getValues(false);
-            for (Map.Entry<String, Object> entry : loadedData.entrySet()) {
-                if (entry.getValue() instanceof List) {
-                    @SuppressWarnings("unchecked")
-                    List<String> settings = (List<String>) entry.getValue();
-                    playerSettings.put(entry.getKey(), settings);
+            ConfigurationSection section = plugin.getConfig().getConfigurationSection("blacklist_settings");
+            if (section != null) {
+                Map<String, Object> loadedData = section.getValues(false);
+                for (Map.Entry<String, Object> entry : loadedData.entrySet()) {
+                    if (entry.getValue() instanceof List) {
+                        @SuppressWarnings("unchecked")
+                        List<String> settings = (List<String>) entry.getValue();
+                        playerSettings.put(entry.getKey(), settings);
+                    }
                 }
+            } else {
+                plugin.getLogger().log(Level.WARNING, "Configuration contains 'blacklist_settings' key but it's not a valid section");
             }
         }
 

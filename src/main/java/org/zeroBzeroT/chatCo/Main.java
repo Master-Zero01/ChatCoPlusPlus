@@ -1,8 +1,16 @@
 package org.zeroBzeroT.chatCo;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -14,17 +22,13 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
+import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 import static org.zeroBzeroT.chatCo.Utils.saveStreamToFile;
 
 import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.ProtocolLibrary;
 
 public class Main extends JavaPlugin {
     public static File PermissionConfig;
@@ -34,6 +38,7 @@ public class Main extends JavaPlugin {
     private Announcer announcer;
     public Collection<ChatPlayer> playerList;
 
+    @Override
     public void onDisable() {
         if (announcer != null) {
             announcer.disable();
@@ -50,6 +55,7 @@ public class Main extends JavaPlugin {
         }
     }
 
+    @Override
     public void onEnable() {
         playerList = Collections.synchronizedCollection(new ArrayList<>());
         getConfig().options().copyDefaults(true);
@@ -66,16 +72,13 @@ public class Main extends JavaPlugin {
             pm.registerEvents(new Whispers(this), this);
         }
 
-        if (getConfig().getBoolean("ChatCo.spoilersEnabled", false)) {
-            pm.registerEvents(new Spoilers(), this);
-        }
-
         if (getConfig().getBoolean("ChatCo.announcements.enabled", true)) {
             announcer = new Announcer(this);
         }
 
         if (getConfig().getBoolean("ChatCo.bStats", false)) {
-            new Metrics(this, 16309);
+            @SuppressWarnings("unused")
+            Metrics metrics = new Metrics(this, 16309);
         }
 
         // Setup kill command listener
@@ -151,114 +154,130 @@ public class Main extends JavaPlugin {
         }
     }
 
+    @Override
     public boolean onCommand(final @NotNull CommandSender sender, final @NotNull Command cmd, final @NotNull String commandLabel, final String[] args) {
-        if (sender instanceof Player) {
-            if (cmd.getName().equalsIgnoreCase("togglechat") && getConfig().getBoolean("toggleChatEnabled", true)) {
-                if (toggleChat((Player) sender)) {
-                    sender.sendMessage(ChatColor.RED + "Your chat is now disabled until you type /togglechat or relog.");
+        if (sender instanceof Player player) {
+            if (cmd.getName().equalsIgnoreCase("togglechat")) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
+                    return true;
+                }
+
+                final boolean chatEnabled = toggleChat(player);
+                if (!chatEnabled) {
+                    sender.sendMessage(componentFromLegacyText("&cYour chat is now disabled until you type /togglechat or relog."));
                 } else {
-                    sender.sendMessage(ChatColor.RED + "Your chat has been re-enabled, type /togglechat to disable it again.");
+                    sender.sendMessage(componentFromLegacyText("&cYour chat has been re-enabled, type /togglechat to disable it again."));
                 }
                 return true;
             } else if (cmd.getName().equalsIgnoreCase("toggletells")) {
-                if (toggleTells((Player) sender)) {
-                    sender.sendMessage(ChatColor.RED + "You will no longer receive tells, type /toggletells to see them again.");
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
+                    return true;
+                }
+                final boolean tellsEnabled = toggleTells(player);
+                if (!tellsEnabled) {
+                    sender.sendMessage(componentFromLegacyText("&cYou will no longer receive tells, type /toggletells to see them again."));
                 } else {
-                    sender.sendMessage(ChatColor.RED + "You now receive tells, type /toggletells to disable them again.");
+                    sender.sendMessage(componentFromLegacyText("&cYou now receive tells, type /toggletells to disable them again."));
                 }
                 return true;
-            } else if (cmd.getName().equalsIgnoreCase("unignoreall") && getConfig().getBoolean("ignoresEnabled", true)) {
-                try {
-                    unIgnoreAll((Player) sender);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return true;
-            } else if (cmd.getName().equalsIgnoreCase("ignore") && getConfig().getBoolean("ignoresEnabled", true)) {
-                try {
-                    if (args.length < 1) {
-                        sender.sendMessage(ChatColor.RED + "You forgot to type the name of the player.");
-                        return true;
-                    }
-
-                    if (args[0].length() > 16) {
-                        sender.sendMessage(ChatColor.RED + "You entered an invalid player name.");
-                        return true;
-                    }
-
-                    final Player ignorable = Bukkit.getServer().getPlayer(args[0]);
-
-                    if (ignorable == null) {
-                        sender.sendMessage(ChatColor.RED + "You have entered a player who does not exist or is offline.");
-                        return true;
-                    }
-
-                    ignorePlayer((Player) sender, args[0]);
-                    return true;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else if (cmd.getName().equalsIgnoreCase("ignorelist") && getConfig().getBoolean("ignoresEnabled", true)) {
-                sender.sendMessage(ChatColor.YELLOW + "Ignored players:");
-                int i = 0;
-
-                for (final String ignores : getChatPlayer((Player) sender).getIgnoreList()) {
-                    sender.sendMessage(ChatColor.YELLOW + "" + ChatColor.ITALIC + ignores);
-                    ++i;
-                }
-
-                sender.sendMessage(ChatColor.YELLOW + "" + i + " players ignored.");
-                return true;
-            }
-
-            if(cmd.getName().equalsIgnoreCase("suicide") && getConfig().getBoolean("ChatCo.suicideCommand", true)) {
+            } else if (cmd.getName().equalsIgnoreCase("unignoreall")) {
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
                     return true;
                 }
-                
-                (new BukkitRunnable() {
+
+                try {
+                    unIgnoreAll(player);
+                } catch (IOException e) {
+                    getLogger().warning(String.format("Error while unignoring all players: %s", e.getMessage()));
+                }
+
+                return true;
+            } else if (cmd.getName().equalsIgnoreCase("ignore")) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
+                    return true;
+                }
+
+                if (args.length < 1) {
+                    sender.sendMessage(componentFromLegacyText("&cYou forgot to type the name of the player."));
+                    return true;
+                }
+
+                try {
+                    ignorePlayer(player, args[0]);
+                } catch (IllegalArgumentException e) {
+                    sender.sendMessage(componentFromLegacyText("&cYou entered an invalid player name."));
+                } catch (IOException e) {
+                    getLogger().warning(String.format("Error while ignoring player: %s", e.getMessage()));
+                }
+
+                final Player ignore = Bukkit.getPlayer(args[0]);
+                if (ignore == null) {
+                    sender.sendMessage(componentFromLegacyText("&cYou have entered a player who does not exist or is offline."));
+                }
+
+                return true;
+            } else if (cmd.getName().equalsIgnoreCase("ignored")) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
+                    return true;
+                }
+
+                final ChatPlayer chatter = getChatPlayer(player);
+                final List<String> ignoreList = chatter.getIgnoreList();
+                int i = ignoreList.size();
+
+                sender.sendMessage(componentFromLegacyText("&eIgnored players:"));
+
+                if (i > 0) {
+                    String ignores = String.join(", ", ignoreList);
+                    sender.sendMessage(componentFromLegacyText("&e&o" + ignores));
+                }
+
+                sender.sendMessage(componentFromLegacyText("&e" + i + " players ignored."));
+
+                return true;
+            } else if (cmd.getName().equalsIgnoreCase("killme")) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
+                    return true;
+                }
+
+
+                new BukkitRunnable() {
                     @Override
                     public void run() {
-                        Player player = (Player) sender;
-                        Optional.ofNullable(player.getVehicle()).ifPresent(Entity::eject);
-                        EntityDamageEvent.DamageCause randomDamageCause = getRandomDamageCause();
-                        EntityDamageEvent damageEvent = new EntityDamageEvent(player, randomDamageCause, 999);
-                        player.setLastDamageCause(damageEvent);
-                        player.setHealth(0);
-                    }
-                }).runTask(this);
-                return true;
-            }
-
-            if(cmd.getName().equalsIgnoreCase("bed")) {
-                if (!(sender instanceof Player)) {
-                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
-                    return true;
-                }
-                
-                (new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        Player player = (Player) sender;
-                        Location bedLocation = player.getBedSpawnLocation();
-
-                        if (bedLocation != null) {
-                            double x = bedLocation.getX();
-                            double y = bedLocation.getY();
-                            double z = bedLocation.getZ();
-
-                            player.sendMessage(ChatColor.GOLD + "[" + ChatColor.YELLOW + "Anarchadia" + ChatColor.GOLD + "] "
-                                    + ChatColor.GREEN + "Your bed is set at: "
-                                    + ChatColor.AQUA + "X: " + ChatColor.WHITE + String.format("%.2f", x) + ", "
-                                    + ChatColor.AQUA + "Y: " + ChatColor.WHITE + String.format("%.2f", y) + ", "
-                                    + ChatColor.AQUA + "Z: " + ChatColor.WHITE + String.format("%.2f", z));
-                        } else {
-                            player.sendMessage(ChatColor.GOLD + "[" + ChatColor.YELLOW + "Anarchadia" + ChatColor.GOLD + "] "
-                                    + ChatColor.RED + "You don't have a bed set.");
+                        if (player.isDead()) {
+                            return;
                         }
+
+                        player.setLastDamageCause(new EntityDamageEvent(player, getRandomDamageCause(), 100.0));
+                        player.setHealth(0.0);
                     }
-                }).runTaskAsynchronously(this);
+                }.runTask(this);
+
+                return true;
+            } else if (cmd.getName().equalsIgnoreCase("spawnpoint")) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
+                    return true;
+                }
+
+
+                Location location = player.getBedSpawnLocation();
+                if (location != null) {
+                    final double x = location.getX();
+                    final double y = location.getY();
+                    final double z = location.getZ();
+
+                    player.sendMessage(componentFromLegacyText("&6[&eAnarchadia&6] &aYour bed is set at: &bX: &f" + String.format("%.2f", x) + ", &bY: &f" + String.format("%.2f", y) + ", &bZ: &f" + String.format("%.2f", z)));
+                } else {
+                    player.sendMessage(componentFromLegacyText("&6[&eAnarchadia&6] &cYou don't have a bed set."));
+                }
+
                 return true;
             }
         }
@@ -320,16 +339,6 @@ public class Main extends JavaPlugin {
             }
 
             if (args.length >= 2) {
-                if (args[0].equalsIgnoreCase("spoilers")) {
-                    if (args[1].equalsIgnoreCase("e")) {
-                        toggleConfigValue(3);
-                        sender.sendMessage("Spoilers enabled");
-                    } else if (args[1].equalsIgnoreCase("d")) {
-                        toggleConfigValue(4);
-                        sender.sendMessage("Spoilers disabled");
-                    }
-                }
-
                 if (args[0].equalsIgnoreCase("whispers")) {
                     if (args[1].equalsIgnoreCase("e")) {
                         toggleConfigValue(5);
@@ -380,7 +389,7 @@ public class Main extends JavaPlugin {
             newChatPlayer = new ChatPlayer(p);
             playerList.add(newChatPlayer);
         } catch (IOException e) {
-            e.printStackTrace();
+            getLogger().warning(String.format("Error creating ChatPlayer: %s", e.getMessage()));
         }
 
         return newChatPlayer;
@@ -403,22 +412,22 @@ public class Main extends JavaPlugin {
     }
 
     private void ignorePlayer(final Player p, final String target) throws IOException {
-        String message = ChatColor.YELLOW + "Chat messages from " + target + " will be ";
+        final ChatPlayer chatter = getChatPlayer(p);
+        chatter.saveIgnoreList(target);
+        boolean isNowIgnored = chatter.isIgnored(target);
 
-        if (getChatPlayer(p).isIgnored(target)) {
-            message += "shown.";
-        } else {
-            message += "hidden.";
-        }
+        String message = "&eChat messages from " + target + " will be ";
+        message += isNowIgnored ? "hidden." : "visible.";
 
-        p.sendMessage(message);
-        getChatPlayer(p).saveIgnoreList(target);
+        p.sendMessage(componentFromLegacyText(message));
     }
 
     private void unIgnoreAll(final Player p) throws IOException {
-        getChatPlayer(p).unIgnoreAll();
-        String message = ChatColor.YELLOW + "Ignore list deleted.";
-        p.sendMessage(message);
+        final ChatPlayer chatter = getChatPlayer(p);
+        chatter.unIgnoreAll();
+
+        String message = "&eIgnore list deleted.";
+        p.sendMessage(componentFromLegacyText(message));
     }
 
     private EntityDamageEvent.DamageCause getRandomDamageCause() {
@@ -433,33 +442,16 @@ public class Main extends JavaPlugin {
 
     private void toggleConfigValue(final int change) {
         switch (change) {
-            case 3:
-                getConfig().set("ChatCo.spoilersEnabled", true);
-                break;
-            case 4:
-                getConfig().set("ChatCo.spoilersEnabled", false);
-                break;
-            case 5:
-                getConfig().set("ChatCo.whisperChangesEnabled", true);
-                break;
-            case 6:
-                getConfig().set("ChatCo.whisperChangesEnabled", false);
-                break;
-            case 7:
-                getConfig().set("ChatCo.newCommands", true);
-                break;
-            case 8:
-                getConfig().set("ChatCo.newCommands", false);
-                break;
-            case 9:
-                getConfig().set("ChatCo.whisperLog", true);
-                break;
-            case 10:
-                getConfig().set("ChatCo.whisperLog", false);
-                break;
+            case 5 -> getConfig().set("ChatCo.whisperChangesEnabled", true);
+            case 6 -> getConfig().set("ChatCo.whisperChangesEnabled", false);
+            case 7 -> getConfig().set("ChatCo.announcementsEnabled", true);
+            case 8 -> getConfig().set("ChatCo.announcementsEnabled", false);
+            case 9 -> getConfig().set("ChatCo.whisperLog", true);
+            case 10 -> getConfig().set("ChatCo.whisperLog", false);
+            default -> {
+                // Default case - no changes
+            }
         }
-
         saveConfig();
-        reloadConfig();
     }
 }

@@ -9,7 +9,6 @@ ChatCo:
   ignoresEnabled: true
   ignoreMessageEnabled: true
   chatDisabledMessageEnabled: true
-  spoilersEnabled: false
   whisperChangesEnabled: true
   whisperOnClick: true
   newCommands: true

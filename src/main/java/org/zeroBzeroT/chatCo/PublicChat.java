@@ -1,17 +1,8 @@
 package org.zeroBzeroT.chatCo;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.ChatColor;
+import java.io.File;
+import java.util.logging.Level;
+
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -19,10 +10,21 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-
-import java.io.File;
-
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
+import static org.zeroBzeroT.chatCo.Utils.stripColor;
+
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public class PublicChat implements Listener {
     public static Main plugin = null;
@@ -36,12 +38,12 @@ public class PublicChat implements Listener {
     }
 
     public String replacePrefixColors(String message, final Player player) {
-        for (ChatColor color : ChatColor.values()) {
-            if (plugin.getConfig().getString("ChatCo.chatPrefixes." + color.name()) != null && message.startsWith(plugin.getConfig().getString("ChatCo.chatPrefixes." + color.name()))) {
-
+        for (String colorName : Utils.getNamedColors().keySet()) {
+            String prefix = plugin.getConfig().getString("ChatCo.chatPrefixes." + colorName);
+            if (prefix != null && message.startsWith(prefix)) {
                 // check for global or player permission
-                if (permissionConfig.getBoolean("ChatCo.chatPrefixes." + color.name(), false) || player.hasPermission("ChatCo.chatPrefixes." + color.name())) {
-                    message = color + message;
+                if (permissionConfig.getBoolean("ChatCo.chatPrefixes." + colorName, false) || player.hasPermission("ChatCo.chatPrefixes." + colorName)) {
+                    message = Utils.colorToString(colorName) + message;
                 }
 
                 // break here since we found a prefix color code
@@ -53,10 +55,10 @@ public class PublicChat implements Listener {
     }
 
     public String replaceInlineColors(String message, final Player player) {
-        for (ChatColor color : ChatColor.values()) {
-            if ((permissionConfig.getBoolean("ChatCo.chatColors." + color.name(), false) || player.hasPermission("ChatCo.chatColors." + color.name()))
-                    && plugin.getConfig().getString("ChatCo.chatColors." + color.name()) != null) {
-                message = message.replace(plugin.getConfig().getString("ChatCo.chatColors." + color.name()), color.toString());
+        for (String colorName : Utils.getNamedColors().keySet()) {
+            String colorCode = plugin.getConfig().getString("ChatCo.chatColors." + colorName);
+            if (colorCode != null && (permissionConfig.getBoolean("ChatCo.chatColors." + colorName, false) || player.hasPermission("ChatCo.chatColors." + colorName))) {
+                message = message.replace(colorCode, Utils.colorToString(colorName));
             }
         }
 
@@ -79,7 +81,7 @@ public class PublicChat implements Listener {
                 legacyMessage = replacePrefixColors(legacyMessage, player);
                 legacyMessage = replaceInlineColors(legacyMessage, player);
 
-                if (ChatColor.stripColor(legacyMessage).trim().isEmpty()) {
+                if (stripColor(legacyMessage).trim().isEmpty()) {
                     event.setCancelled(true);
                     return;
                 }
@@ -103,11 +105,11 @@ public class PublicChat implements Listener {
                 if (!PublicChat.plugin.getConfig().getBoolean("ChatCo.chatDisabled", false)) {
                     if (isBlackholed) {
                         if (!BlackholeModule.isPlayerHidden(player)) {
-                            plugin.getLogger().info("Blocked message from " + player.getName() + ": " + ChatColor.stripColor(LegacyComponentSerializer.legacySection().serialize(chatMessage)));
+                            plugin.getLogger().log(Level.INFO, "Blocked message from {0}: {1}", new Object[]{player.getName(), stripColor(LegacyComponentSerializer.legacySection().serialize(chatMessage))});
                         }
                         player.sendMessage(chatMessage);
                     } else {
-                        for (Player recipient : player.getWorld().getPlayers()) {
+                        for (Player recipient : plugin.getServer().getOnlinePlayers()) {
                             try {
                                 ChatPlayer chatPlayer = PublicChat.plugin.getChatPlayer(recipient);
 
@@ -119,7 +121,7 @@ public class PublicChat implements Listener {
 
                                 recipient.sendMessage(chatMessage);
                             } catch (NullPointerException e) {
-                                e.printStackTrace();
+                                plugin.getLogger().log(Level.WARNING, "Error sending chat message", e);
                             }
                         }
                     }

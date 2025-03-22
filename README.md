@@ -42,7 +42,6 @@ the changes take effect.
 
 ## Components
 
-- **spoilers** - enables or disables spoilers, is **disabled** by default.
 - **whispers** - enables or disables whisper changes, is **enabled** by default.
 - **newcommands** - enables or disables new whisper commands, is **enabled** by default.
 - **whisperlog** - enables or disables whisper logging (whisper logs are saved in /ChatCo/whisperlog.txt), is **
@@ -72,8 +71,6 @@ You can customize the appearance of whispers.
 
 - Turn chat off/on with /togglechat.
 - Write > at the start of a message for green-text.
-- Write [SPOILER]text[/SPOILER] to make a spoiler.
-- Write /show spoiler [1-5] to view spoilers.
 
 ## Tested Minecraft Versions
 

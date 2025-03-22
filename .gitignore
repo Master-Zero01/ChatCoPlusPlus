@@ -113,3 +113,6 @@ buildNumber.properties
 run/
 .vscode/settings.json
 src/main/java/org/zeroBzeroT/chatCo/ChatCoPlus.code-workspace
+Learning.md
+Project.md
+UserRequests.md
