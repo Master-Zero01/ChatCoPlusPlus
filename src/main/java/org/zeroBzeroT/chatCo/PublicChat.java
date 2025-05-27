@@ -146,6 +146,12 @@ public class PublicChat implements Listener {
                                 plugin.getLogger().log(Level.WARNING, "Error sending chat message", e);
                             }
                         }
+                        
+                        // Log to console if enabled
+                        if (PublicChat.plugin.getConfig().getBoolean("ChatCo.chatToConsole", true)) {
+                            String consoleMessage = stripColor(LegacyComponentSerializer.legacySection().serialize(chatMessage));
+                            plugin.getLogger().log(Level.INFO, "[CHAT] {0}", consoleMessage);
+                        }
                     }
                 }
                 event.setCancelled(true);
