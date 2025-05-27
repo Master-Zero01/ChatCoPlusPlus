@@ -24,8 +24,14 @@ commands:
     description: Returns a list of all currently ignored players.
     usage: /ignorelist
   chatco:
-    description: Plugin configuration commands. Only console input accepted. 'e' enables, 'd' disables.
-    usage: /chatco <whispers|newcommands|whisperlog> <e|d>
+    description: Plugin configuration commands. Manage whispers, blacklist, and more.
+    usage: |
+      /chatco reload - Reload the plugin config
+      /chatco blacklist test <message> - Test if a message contains blacklisted words
+      /chatco blacklist add <word> - Add a word to the blacklist
+      /chatco blacklist remove <word> - Remove a word from the blacklist
+      /chatco blacklist list - List all blacklisted words
+      /chatco <whispers|newcommands|whisperlog> <e|d> - Enable/disable features
   whisper:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player
@@ -147,3 +153,6 @@ permissions:
   ChatCo.chatColors..LIGHT_PURPLE:
     description: Allows you to use to use Light_Purple colors in chat
     default: false
+  ChatCo.admin.blacklist:
+    description: Allows management of the word blacklist
+    default: op

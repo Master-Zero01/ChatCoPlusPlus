@@ -68,6 +68,16 @@ public record Whispers(Main plugin) implements Listener {
                     return;
                 }
                 
+                // Check for blacklisted words
+                if (plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                        plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
                 sendPrivateMessage(sender, target, message);
             }
 
@@ -94,6 +104,16 @@ public record Whispers(Main plugin) implements Listener {
                     // Log blocked message if debug is enabled
                     if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
                         plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
+                // Check for blacklisted words
+                if (plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                        plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + message);
                     }
                     event.setCancelled(true);
                     return;
@@ -131,6 +151,16 @@ public record Whispers(Main plugin) implements Listener {
                     return;
                 }
                 
+                // Check for blacklisted words
+                if (plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                        plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
                 sendPrivateMessage(sender, target, message);
                 event.setCancelled(true);
                 plugin.getChatPlayer(sender).setLastReceiver(target);
@@ -142,6 +172,16 @@ public record Whispers(Main plugin) implements Listener {
                     // Log blocked message if debug is enabled
                     if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
                         plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
+                // Check for blacklisted words
+                if (plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                        plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + message);
                     }
                     event.setCancelled(true);
                     return;

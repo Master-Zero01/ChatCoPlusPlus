@@ -19,6 +19,11 @@ ChatCo:
   suicideCommand: true
   blockUnicodeText: false
   debugUnicodeBlocking: false
+  debugBlacklistBlocking: false
+  # Words in this list will be blocked with advanced filtering
+  # The filter detects variations like: g00gle, gooooogle, g_o_o_g_l_e, elgoog, ggle
+  wordBlacklist:
+    - "jonarchy"
   whisperFormat:
     receive: "%LIGHT_PURPLE%%SENDER% whispers: "
     send: "%LIGHT_PURPLE%To %RECEIVER%: "

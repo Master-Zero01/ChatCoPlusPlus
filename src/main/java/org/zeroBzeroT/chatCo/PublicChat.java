@@ -90,6 +90,17 @@ public class PublicChat implements Listener {
                     event.setCancelled(true);
                     return;
                 }
+                
+                // Check for blacklisted words
+                if (PublicChat.plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+                    // Log blocked message if debug is enabled
+                    if (PublicChat.plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                        plugin.getLogger().info("Blocked blacklisted word from " + player.getName() + ": " + message);
+                    }
+                    // Silently drop the message
+                    event.setCancelled(true);
+                    return;
+                }
 
                 // Convert to legacy format
                 String legacyMessage = LegacyComponentSerializer.legacyAmpersand().serialize(Component.text(message));

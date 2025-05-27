@@ -37,6 +37,7 @@ public class Main extends JavaPlugin {
     private static File Help;
     private Announcer announcer;
     public Collection<ChatPlayer> playerList;
+    private BlacklistFilter blacklistFilter;
 
     @Override
     public void onDisable() {
@@ -55,6 +56,23 @@ public class Main extends JavaPlugin {
         }
     }
 
+    /**
+     * Get the blacklist filter
+     * @return The blacklist filter instance
+     */
+    public BlacklistFilter getBlacklistFilter() {
+        return blacklistFilter;
+    }
+
+    /**
+     * Reload the blacklist filter
+     */
+    public void reloadBlacklistFilter() {
+        if (blacklistFilter != null) {
+            blacklistFilter.reloadBlacklist();
+        }
+    }
+
     @Override
     public void onEnable() {
         playerList = Collections.synchronizedCollection(new ArrayList<>());
@@ -63,6 +81,9 @@ public class Main extends JavaPlugin {
 
         saveResourceFiles();
         toggleConfigValue(0);
+        
+        // Initialize blacklist filter
+        blacklistFilter = new BlacklistFilter(this);
 
         final PluginManager pm = getServer().getPluginManager();
         pm.registerEvents(new PublicChat(this), this);
@@ -334,8 +355,69 @@ public class Main extends JavaPlugin {
                 reloadConfig();
                 saveConfig();
                 reloadAnnouncer();
+                reloadBlacklistFilter();
                 sender.sendMessage("Config reloaded");
                 return true;
+            }
+            
+            if (args.length >= 2 && args[0].equalsIgnoreCase("blacklist")) {
+                // Check if the sender has the blacklist management permission
+                if (!sender.hasPermission("ChatCo.admin.blacklist")) {
+                    sender.sendMessage("You don't have permission to manage the blacklist");
+                    return true;
+                }
+                
+                if (args[1].equalsIgnoreCase("test") && args.length >= 3) {
+                    // Join remaining args as the test message
+                    String testMessage = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+                    boolean blocked = blacklistFilter.containsBlacklistedWord(testMessage);
+                    sender.sendMessage("Test message: \"" + testMessage + "\" would be " + 
+                        (blocked ? "BLOCKED" : "ALLOWED"));
+                    return true;
+                }
+                
+                if (args[1].equalsIgnoreCase("add") && args.length >= 3) {
+                    // Add word to blacklist
+                    String word = args[2].toLowerCase();
+                    List<String> blacklist = getConfig().getStringList("ChatCo.wordBlacklist");
+                    if (!blacklist.contains(word)) {
+                        blacklist.add(word);
+                        getConfig().set("ChatCo.wordBlacklist", blacklist);
+                        saveConfig();
+                        reloadBlacklistFilter();
+                        sender.sendMessage("Added \"" + word + "\" to blacklist");
+                    } else {
+                        sender.sendMessage("Word \"" + word + "\" is already blacklisted");
+                    }
+                    return true;
+                }
+                
+                if (args[1].equalsIgnoreCase("remove") && args.length >= 3) {
+                    // Remove word from blacklist
+                    String word = args[2].toLowerCase();
+                    List<String> blacklist = getConfig().getStringList("ChatCo.wordBlacklist");
+                    if (blacklist.contains(word)) {
+                        blacklist.remove(word);
+                        getConfig().set("ChatCo.wordBlacklist", blacklist);
+                        saveConfig();
+                        reloadBlacklistFilter();
+                        sender.sendMessage("Removed \"" + word + "\" from blacklist");
+                    } else {
+                        sender.sendMessage("Word \"" + word + "\" is not in the blacklist");
+                    }
+                    return true;
+                }
+                
+                if (args[1].equalsIgnoreCase("list")) {
+                    // List blacklisted words
+                    List<String> blacklist = getConfig().getStringList("ChatCo.wordBlacklist");
+                    if (blacklist.isEmpty()) {
+                        sender.sendMessage("The blacklist is empty");
+                    } else {
+                        sender.sendMessage("Blacklisted words: " + String.join(", ", blacklist));
+                    }
+                    return true;
+                }
             }
 
             if (args.length >= 2) {
