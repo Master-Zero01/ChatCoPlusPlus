@@ -279,4 +279,34 @@ public class Utils {
         final SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT_NOW);
         return sdf.format(cal.getTime());
     }
+
+    /**
+     * Checks if a string contains any non-ASCII characters (unicode)
+     * @param text The text to check
+     * @return true if the text contains unicode characters, false otherwise
+     */
+    public static boolean containsUnicode(String text) {
+        if (text == null) {
+            return false;
+        }
+        
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            // Allow section symbol (§) for color codes, block all other non-ASCII
+            if (c > 127 && c != 167) { // 167 is the section symbol (§)
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Tests if specific character is allowed despite being a non-ASCII character
+     * @param c The character to check
+     * @return true if the character is allowed, false otherwise
+     */
+    public static boolean isAllowedSpecialChar(char c) {
+        // Allow section symbol (§) for color codes
+        return c == 167; // 167 is the section symbol (§)
+    }
 }

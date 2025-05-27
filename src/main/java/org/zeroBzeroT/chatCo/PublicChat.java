@@ -11,6 +11,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
+import static org.zeroBzeroT.chatCo.Utils.containsUnicode;
 import static org.zeroBzeroT.chatCo.Utils.getDirectColorCode;
 import static org.zeroBzeroT.chatCo.Utils.parseFormattingTags;
 import static org.zeroBzeroT.chatCo.Utils.stripColor;
@@ -78,6 +79,17 @@ public class PublicChat implements Listener {
             public void onPacketReceiving(PacketEvent event) {
                 Player player = event.getPlayer();
                 String message = event.getPacket().getStrings().read(0);
+
+                // Check for unicode characters if the feature is enabled
+                if (PublicChat.plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
+                    // Log blocked message if debug is enabled
+                    if (PublicChat.plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                        plugin.getLogger().info("Blocked unicode message from " + player.getName() + ": " + message);
+                    }
+                    // Silently drop the message
+                    event.setCancelled(true);
+                    return;
+                }
 
                 // Convert to legacy format
                 String legacyMessage = LegacyComponentSerializer.legacyAmpersand().serialize(Component.text(message));

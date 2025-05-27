@@ -16,6 +16,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
+import static org.zeroBzeroT.chatCo.Utils.containsUnicode;
 import static org.zeroBzeroT.chatCo.Utils.getDirectColorCode;
 import static org.zeroBzeroT.chatCo.Utils.now;
 import static org.zeroBzeroT.chatCo.Utils.parseFormattingTags;
@@ -56,6 +57,17 @@ public record Whispers(Main plugin) implements Listener {
                 sender.sendMessage(componentFromLegacyText("&cYou have not initiated any private message in this session."));
             } else {
                 String message = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
+                
+                // Check for unicode characters
+                if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                        plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
                 sendPrivateMessage(sender, target, message);
             }
 
@@ -76,6 +88,17 @@ public record Whispers(Main plugin) implements Listener {
                 sender.sendMessage(componentFromLegacyText("&cYou have not received any private messages in this session."));
             } else {
                 String message = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
+                
+                // Check for unicode characters
+                if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                        plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
                 sendPrivateMessage(sender, target, message);
             }
 
@@ -97,11 +120,33 @@ public record Whispers(Main plugin) implements Listener {
 
             if (plugin.getConfig().getBoolean("ChatCo.newCommands", true)) {
                 String message = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
+                
+                // Check for unicode characters
+                if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                        plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
                 sendPrivateMessage(sender, target, message);
                 event.setCancelled(true);
                 plugin.getChatPlayer(sender).setLastReceiver(target);
             } else if (args[0].equalsIgnoreCase("/tell ") || args[0].equalsIgnoreCase("/w ") || args[0].equalsIgnoreCase("/msg ")) {
                 String message = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
+                
+                // Check for unicode characters
+                if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
+                    // Log blocked message if debug is enabled
+                    if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                        plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + message);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
                 sendPrivateMessage(sender, target, message);
                 event.setCancelled(true);
                 plugin.getChatPlayer(sender).setLastReceiver(target);

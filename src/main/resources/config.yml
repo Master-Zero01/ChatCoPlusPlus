@@ -17,6 +17,8 @@ ChatCo:
   whisperLog: false
   whisperMonitoring: false
   suicideCommand: true
+  blockUnicodeText: false
+  debugUnicodeBlocking: false
   whisperFormat:
     receive: "%LIGHT_PURPLE%%SENDER% whispers: "
     send: "%LIGHT_PURPLE%To %RECEIVER%: "
