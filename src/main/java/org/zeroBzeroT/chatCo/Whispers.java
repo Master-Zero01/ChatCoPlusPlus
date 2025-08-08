@@ -164,7 +164,7 @@ public record Whispers(Main plugin) implements Listener {
                 sendPrivateMessage(sender, target, message);
                 event.setCancelled(true);
                 plugin.getChatPlayer(sender).setLastReceiver(target);
-            } else if (args[0].equalsIgnoreCase("/tell ") || args[0].equalsIgnoreCase("/w ") || args[0].equalsIgnoreCase("/msg ")) {
+            } else if (args[0].toLowerCase().startsWith("/tell") || args[0].toLowerCase().startsWith("/w") || args[0].toLowerCase().startsWith("/msg")) {
                 String message = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
                 
                 // Check for unicode characters
@@ -224,6 +224,22 @@ public record Whispers(Main plugin) implements Listener {
     }
 
     private void sendPrivateMessage(Player sender, Player receiver, String message) {
+        // Double-check for blacklisted words and unicode as a safety measure
+        // This prevents any bypasses that might occur in the command handling
+        if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
+            if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + message);
+            }
+            return;
+        }
+        
+        if (plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+            if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + message);
+            }
+            return;
+        }
+        
         boolean doNotSend = false;
         boolean isIgnoring = false;
         ChatPlayer target = plugin.getChatPlayer(receiver);
