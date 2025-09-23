@@ -23,7 +23,6 @@ ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficie
 - Full permission support to limit access to colors, features, and admin commands.
 - Whisper logging and monitoring (logs to file or console).
 - Click-to-whisper on player names in chat.
-- Additional utility commands: `/killme` (suicide), `/spawnpoint` (show bed location).
 - Requires ProtocolLib for advanced packet handling.
 
 ## Source
@@ -69,8 +68,6 @@ Most admin commands use the format `/chatco {component} {e|d}` where 'e' enables
 - `/unignoreall` - Clear ignore list.
 - `/togglechat` - Toggle public chat (not persistent).
 - `/toggletells` - Toggle receiving whispers (not persistent).
-- `/killme` - Instantly kill yourself.
-- `/spawnpoint` - Show your bed spawn coordinates.
 
 ### Whisper Commands
 
