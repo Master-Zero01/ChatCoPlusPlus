@@ -16,10 +16,10 @@ ChatCo:
   lastCommand: true
   whisperLog: false
   whisperMonitoring: false
-  suicideCommand: true
   blockUnicodeText: false
   debugUnicodeBlocking: false
   debugBlacklistBlocking: false
+
   # Words in this list will be blocked with advanced filtering
   # The filter detects variations like: g00gle, gooooogle, g_o_o_g_l_e, elgoog, ggle
   wordBlacklist:
@@ -73,13 +73,18 @@ ChatCo:
     YELLOW: null
   announcements:
     enabled: true
-    prefix: "&6[Anarchadia]"
-    delay: 600
+    prefix: '&6[Anarchadia]'
+    delay: 350
     messages:
-      - '<GREEN>Join our Discord <RED>@ <UNDERLINE><AQUA>https://discord.anarchadia.org'
-      - '<GREEN>Visit our website: <UNDERLINE><AQUA>https://anarchadia.org<RESET> <GREEN>for updates!'
-      - '<GREEN>Wonder what your joindate is? Try <AQUA>/joindate <GREEN>to see yours!'
-      - '<GREEN>Need someone to talk with? Message our very own <AQUA>Olygarchist <GREEN>to chat with AI!'
+    - '<GREEN>Join our Discord <RED>@ <UNDERLINE><AQUA>https://discord.anarchadia.org'
+    - '<GREEN>Visit our website: <UNDERLINE><AQUA>https://anarchadia.org<RESET> <GREEN>forupdates!'
+    - '<GREEN>Wonder what your joindate is? Try <AQUA>/joindate <GREEN>to see yours!'
+    - '<GREEN>Need someone to talk with? Message our very own <AQUA>Olygarchist <GREEN>to chat with AI!'
+    - '<GREEN>Looking to trade? Use <AQUA>/ah <GREEN>to list items on the global <YELLOW>AuctionHouse!'
+    - '<GREEN>Want to swap directly? Try <AQUA>/trade <GREEN>to exchange items with other players!'
+    - '<GREEN>Mini pets are here! Find <LIGHT_PURPLE>Holy Hand Grenades <GREEN>to get your very own!'
+    - '<GREEN>Portals spawn at any two-coordinate pairs: <YELLOW>2500, 5000, 10000, 20000, 30000, 50000, 100000, 200000<GREEN> and more!'
+
 
 # Available formatting tags:
 # <BOLD>        - Makes text bold

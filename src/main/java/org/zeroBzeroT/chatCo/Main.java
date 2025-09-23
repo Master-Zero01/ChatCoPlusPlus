@@ -6,18 +6,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
-
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -102,53 +99,8 @@ public class Main extends JavaPlugin {
             Metrics metrics = new Metrics(this, 16309);
         }
 
-        // Setup kill command listener
-        setupKillCommandListener();
     }
 
-    private void setupKillCommandListener() {
-        if (getServer().getPluginManager().getPlugin("ProtocolLib") == null) {
-            getLogger().warning("ProtocolLib not found! Kill command handling will not work properly.");
-            return;
-        }
-
-        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this,
-                PacketType.Play.Client.CHAT_COMMAND) {
-            @Override
-            public void onPacketReceiving(PacketEvent event) {
-                String command = event.getPacket().getStrings().read(0);
-
-                // Check if it's a kill command
-                if (command.equalsIgnoreCase("kill")) {
-                    Player player = event.getPlayer();
-
-                    // Let vanilla handle everything for OPs
-                    if (player.isOp()) {
-                        return;
-                    }
-
-                    // For non-OPs, handle with our custom logic
-                    event.setCancelled(true);
-
-                    // Schedule our custom kill logic
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            if (!getConfig().getBoolean("ChatCo.suicideCommand", true)) {
-                                return;
-                            }
-
-                            Optional.ofNullable(player.getVehicle()).ifPresent(Entity::eject);
-                            EntityDamageEvent.DamageCause[] causes = EntityDamageEvent.DamageCause.values();
-                            EntityDamageEvent.DamageCause randomCause = causes[new Random().nextInt(causes.length)];
-                            player.setLastDamageCause(new EntityDamageEvent(player, randomCause, Double.MAX_VALUE));
-                            player.setHealth(0);
-                        }
-                    }.runTask(Main.this);
-                }
-            }
-        });
-    }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private void saveResourceFiles() {
@@ -303,36 +255,39 @@ public class Main extends JavaPlugin {
             }
         }
 
-        if (cmd.getName().equalsIgnoreCase("blackhole") && (sender.isOp() || sender instanceof ConsoleCommandSender)) {
-            if (args.length == 0) {
-                sender.sendMessage("Usage: /blackhole <player> or /blackhole hide <player> or /blackhole reload");
-                return true;
-            }
-
-            if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
-                BlackholeModule.reloadConfiguration();
-                sender.sendMessage("Blackhole configuration reloaded.");
-                return true;
-            }
-
-            if (args.length == 2 && args[0].equalsIgnoreCase("hidden") || args[0].equalsIgnoreCase("hide")) {
-                Player target = Bukkit.getPlayer(args[1]);
-                if (target == null) {
-                    sender.sendMessage("Player not found.");
+        if ((cmd.getName().equalsIgnoreCase("mute") || cmd.getName().equalsIgnoreCase("unmute")) && (sender.isOp() || sender instanceof ConsoleCommandSender)) {
+            if (cmd.getName().equalsIgnoreCase("mute")) {
+                if (args.length == 0) {
+                    sender.sendMessage("Usage: /mute <player> or /mute reload");
                     return true;
                 }
 
-                if (!BlackholeModule.isPlayerBlacklisted(target)) {
-                    sender.sendMessage("Player must be blacklisted first.");
+                if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
+                    BlackholeModule.reloadConfiguration();
+                    sender.sendMessage("Mute configuration reloaded.");
                     return true;
                 }
 
-                BlackholeModule.setPlayerHidden(target, !BlackholeModule.isPlayerHidden(target));
-                sender.sendMessage("Player messages will " + (BlackholeModule.isPlayerHidden(target) ? "not" : "now") + " show in console.");
-                return true;
-            }
+                if (args.length == 1) {
+                    Player target = Bukkit.getPlayer(args[0]);
+                    if (target == null) {
+                        sender.sendMessage("Player not found.");
+                        return true;
+                    }
 
-            if (args.length == 1) {
+                    if (BlackholeModule.isPlayerBlacklisted(target)) {
+                        sender.sendMessage("Player is already muted.");
+                    } else {
+                        BlackholeModule.addPlayerToBlacklist(target, false);
+                        sender.sendMessage("Muted player.");
+                    }
+                    return true;
+                }
+            } else if (cmd.getName().equalsIgnoreCase("unmute")) {
+                if (args.length != 1) {
+                    sender.sendMessage("Usage: /unmute <player>");
+                    return true;
+                }
                 Player target = Bukkit.getPlayer(args[0]);
                 if (target == null) {
                     sender.sendMessage("Player not found.");
@@ -341,13 +296,32 @@ public class Main extends JavaPlugin {
 
                 if (BlackholeModule.isPlayerBlacklisted(target)) {
                     BlackholeModule.removePlayerFromBlacklist(target);
-                    sender.sendMessage("Removed from blacklist.");
+                    sender.sendMessage("Unmuted player.");
                 } else {
-                    BlackholeModule.addPlayerToBlacklist(target, false);
-                    sender.sendMessage("Added to blacklist.");
+                    sender.sendMessage("Player is not muted.");
                 }
                 return true;
             }
+        } else if (cmd.getName().equalsIgnoreCase("consolemute") && (sender.isOp() || sender instanceof ConsoleCommandSender)) {
+            if (args.length != 1) {
+                sender.sendMessage("Usage: /consolemute <player>");
+                return true;
+            }
+
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null) {
+                sender.sendMessage("Player not found.");
+                return true;
+            }
+
+            if (!BlackholeModule.isPlayerBlacklisted(target)) {
+                sender.sendMessage("Player must be muted first.");
+                return true;
+            }
+
+            BlackholeModule.setPlayerHidden(target, !BlackholeModule.isPlayerHidden(target));
+            sender.sendMessage("Player messages will " + (BlackholeModule.isPlayerHidden(target) ? "not" : "now") + " show in console.");
+            return true;
         }
 
         if (cmd.getName().equalsIgnoreCase("chatco")) {

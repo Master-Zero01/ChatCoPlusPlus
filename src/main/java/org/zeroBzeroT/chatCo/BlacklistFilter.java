@@ -4,13 +4,18 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.text.Normalizer;
+import com.ibm.icu.text.SpoofChecker;
 
 public class BlacklistFilter {
     private final Main plugin;
     private List<Pattern> blacklistPatterns;
+    private List<String> normalizedBlacklist;
+    private final SpoofChecker spoofChecker;
 
     public BlacklistFilter(Main plugin) {
         this.plugin = plugin;
+        this.spoofChecker = new SpoofChecker.Builder().build();
         reloadBlacklist();
     }
 
@@ -19,10 +24,17 @@ public class BlacklistFilter {
      */
     public void reloadBlacklist() {
         List<String> blacklist = plugin.getConfig().getStringList("ChatCo.wordBlacklist");
-        blacklistPatterns = blacklist.stream()
+        normalizedBlacklist = blacklist.stream()
+                .map(word -> {
+                    String normalized = Normalizer.normalize(word.toLowerCase(), Normalizer.Form.NFKC);
+                    return spoofChecker.getSkeleton(normalized);
+                })
+                .collect(Collectors.toList());
+        blacklistPatterns = normalizedBlacklist.stream()
                 .map(this::createFuzzyPattern)
                 .collect(Collectors.toList());
     }
+
 
     /**
      * Check if a message contains any blacklisted words
@@ -36,18 +48,19 @@ public class BlacklistFilter {
 
         // Convert to lowercase for case-insensitive matching
         String lowerMessage = message.toLowerCase();
+        String normalizedMessage = Normalizer.normalize(lowerMessage, Normalizer.Form.NFKC);
+        String skeleton = spoofChecker.getSkeleton(normalizedMessage);
         
         // Check against each pattern
         for (Pattern pattern : blacklistPatterns) {
-            if (pattern.matcher(lowerMessage).find()) {
+            if (pattern.matcher(skeleton).find()) {
                 return true;
             }
         }
         
         // Check for reversed words and other variations only for words longer than 5 chars
-        List<String> blacklist = plugin.getConfig().getStringList("ChatCo.wordBlacklist");
-        for (String word : blacklist) {
-            if (word.length() > 5 && containsVariation(lowerMessage, word)) {
+        for (String word : normalizedBlacklist) {
+            if (word.length() > 5 && containsVariation(skeleton, word)) {
                 return true;
             }
         }
@@ -249,6 +262,7 @@ public class BlacklistFilter {
     private int countAlphanumeric(String str) {
         return (int) str.chars().filter(Character::isLetterOrDigit).count();
     }
+
 
     /**
      * Get the current blacklist patterns for debugging
