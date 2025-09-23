@@ -2,6 +2,9 @@ name: Build and Release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build-and-release:
@@ -34,7 +37,7 @@ jobs:
           tag_name: v${{ env.VERSION }}.${{ github.run_number }}
           name: Release ${{ env.VERSION }} Build ${{ github.run_number }}
           draft: false
-          prerelease: false
+          prerelease: true
           latest: false
           files: |
             target/${{ env.ARTIFACT_ID }}-${{ env.VERSION }}.jar
