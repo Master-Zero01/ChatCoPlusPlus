@@ -4,11 +4,11 @@
 
 ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficient chat system with colored text, ignores, whispers, announcements, muting, word blacklisting, and optional logging.
 
-![logo](https://github.com/zeroBzeroT/ChatCoPlus/blob/main/logo.jpg?raw=true)
+![logo](https://github.com/AnarchadiaMC/ChatCoPlus/blob/main/logo.jpg?raw=true)
 
-[![release](https://github.com/zeroBzeroT/ChatCoPlus/actions/workflows/release.yml/badge.svg)](https://github.com/zeroBzeroT/ChatCoPlus/actions/workflows/release.yml)
-![repo size](https://img.shields.io/github/languages/code-size/zeroBzeroT/ChatCoPlus.svg?label=repo%20size)
-[![downloads](https://img.shields.io/github/downloads/zeroBzeroT/ChatCoPlus/total)](https://github.com/zeroBzeroT/ChatCoPlus/releases)
+[![release](https://github.com/AnarchadiaMC/ChatCoPlus/actions/workflows/release.yml/badge.svg)](https://github.com/AnarchadiaMC/ChatCoPlus/actions/workflows/release.yml)
+![repo size](https://img.shields.io/github/languages/code-size/AnarchadiaMC/ChatCoPlus.svg?label=repo%20size)
+[![downloads](https://img.shields.io/github/downloads/AnarchadiaMC/ChatCoPlus/total)](https://github.com/AnarchadiaMC/ChatCoPlus/releases)
 
 ## Features
 
