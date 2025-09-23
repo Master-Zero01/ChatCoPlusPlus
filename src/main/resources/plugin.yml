@@ -108,49 +108,49 @@ permissions:
   ChatCo.chatPrefixes.LIGHT_PURPLE:
     description: Allows you to use to use Light_Purple prefixes in chat
     default: false
-  ChatCo.chatColors..GREEN:
+  ChatCo.chatColors.GREEN:
     description: Allows you to use to use Green colors in chat
     default: false
-  ChatCo.chatColors..BLUE:
+  ChatCo.chatColors.BLUE:
     description: Allows you to use to use Blue colors in chat
     default: false
-  ChatCo.chatColors..RED:
+  ChatCo.chatColors.RED:
     description: Allows you to use to use Red colors in chat
     default: false
-  ChatCo.chatColors..AQUA:
+  ChatCo.chatColors.AQUA:
     description: Allows you to use to use Aqua colors in chat
     default: false
-  ChatCo.chatColors..GOLD:
+  ChatCo.chatColors.GOLD:
     description: Allows you to use to use Gold colors in chat
     default: false
-  ChatCo.chatColors..YELLOW:
+  ChatCo.chatColors.YELLOW:
     description: Allows you to use to use Yellow colors in chat
     default: false
-  ChatCo.chatColors..GRAY:
+  ChatCo.chatColors.GRAY:
     description: Allows you to use to use Gray colors in chat
     default: false
-  ChatCo.chatColors..BLACK:
+  ChatCo.chatColors.BLACK:
     description: Allows you to use to use Black colors in chat
     default: false
-  ChatCo.chatColors..DARK_GREEN:
+  ChatCo.chatColors.DARK_GREEN:
     description: Allows you to use to use Dark_Green colors in chat
     default: false
-  ChatCo.chatColors..DARK_RED:
+  ChatCo.chatColors.DARK_RED:
     description: Allows you to use to use Dark_Red colors in chat
     default: false
-  ChatCo.chatColors..DARK_GRAY:
+  ChatCo.chatColors.DARK_GRAY:
     description: Allows you to use to use Dark_Gray colors in chat
     default: false
-  ChatCo.chatColors..DARK_BLUE:
+  ChatCo.chatColors.DARK_BLUE:
     description: Allows you to use to use Dark_Blue colors in chat
     default: false
-  ChatCo.chatColors..DARK_AQUA:
+  ChatCo.chatColors.DARK_AQUA:
     description: Allows you to use to use Dark_Aqua colors in chat
     default: false
-  ChatCo.chatColors..DARK_PURPLE:
+  ChatCo.chatColors.DARK_PURPLE:
     description: Allows you to use to use Dark_Purple colors in chat
     default: false
-  ChatCo.chatColors..LIGHT_PURPLE:
+  ChatCo.chatColors.LIGHT_PURPLE:
     description: Allows you to use to use Light_Purple colors in chat
     default: false
   ChatCo.admin.blacklist:
