@@ -31,8 +31,11 @@ import com.comphenix.protocol.events.PacketEvent;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
-public record Whispers(Main plugin) implements Listener {
-    Whispers {
+public class Whispers implements Listener {
+    private final Main plugin;
+
+    public Whispers(Main plugin) {
+        this.plugin = plugin;
         setupListener();
     }
 
