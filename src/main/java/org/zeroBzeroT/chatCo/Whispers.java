@@ -87,7 +87,7 @@ public class Whispers implements Listener {
             return;
         }
         
-        if (plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+        if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(message)) {
             if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                 plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + message);
             }
@@ -96,7 +96,7 @@ public class Whispers implements Listener {
         
         boolean doNotSend = false;
         boolean isIgnoring = false;
-        ChatPlayer target = plugin.getChatPlayer(receiver);
+        ChatPlayer target = ((Main) plugin).getChatPlayer(receiver);
 
         if (target != null && target.tellsDisabled) {
             doNotSend = true;
@@ -188,9 +188,9 @@ public class Whispers implements Listener {
                         return;
                     }
 
-                    final Player target = plugin.getChatPlayer(sender).getLastReceiver();
+                    final Player target = ((Main) plugin).getChatPlayer(sender).getLastReceiver();
 
-                    if ((target == null && plugin.getChatPlayer(sender).LastReceiver != null)
+                    if ((target == null && ((Main) plugin).getChatPlayer(sender).LastReceiver != null)
                             || isVanished(target)) {
                         sender.sendMessage(componentFromLegacyText("&cThe last person you sent a private message to is offline."));
                     } else if (target == null) {
@@ -209,7 +209,7 @@ public class Whispers implements Listener {
                         }
                         
                         // Check for blacklisted words
-                        if (plugin.getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
+                        if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
                             // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                                 plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
@@ -229,9 +229,9 @@ public class Whispers implements Listener {
                         return;
                     }
 
-                    final Player target = plugin.getChatPlayer(sender).getLastMessenger();
+                    final Player target = ((Main) plugin).getChatPlayer(sender).getLastMessenger();
 
-                    if ((target == null && plugin.getChatPlayer(sender).LastMessenger != null)
+                    if ((target == null && ((Main) plugin).getChatPlayer(sender).LastMessenger != null)
                             || isVanished(target)) {
                         sender.sendMessage(componentFromLegacyText("&cThe last person you received a private message from is offline."));
                     } else if (target == null) {
@@ -250,7 +250,7 @@ public class Whispers implements Listener {
                         }
                         
                         // Check for blacklisted words
-                        if (plugin.getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
+                        if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
                             // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                                 plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
@@ -292,7 +292,7 @@ public class Whispers implements Listener {
                         }
                         
                         // Check for blacklisted words
-                        if (plugin.getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
+                        if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
                             // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                                 plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
@@ -303,7 +303,7 @@ public class Whispers implements Listener {
                         
                         sendPrivateMessage(sender, target, whisperMessage);
                         event.setCancelled(true);
-                        plugin.getChatPlayer(sender).setLastReceiver(target);
+                        ((Main) plugin).getChatPlayer(sender).setLastReceiver(target);
                     } else if (args[0].toLowerCase().startsWith("tell") || args[0].toLowerCase().startsWith("w") || args[0].toLowerCase().startsWith("msg")) {
                         String whisperMessage = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
                         
@@ -318,7 +318,7 @@ public class Whispers implements Listener {
                         }
                         
                         // Check for blacklisted words
-                        if (plugin.getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
+                        if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
                             // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                                 plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
@@ -329,7 +329,7 @@ public class Whispers implements Listener {
                         
                         sendPrivateMessage(sender, target, whisperMessage);
                         event.setCancelled(true);
-                        plugin.getChatPlayer(sender).setLastReceiver(target);
+                        ((Main) plugin).getChatPlayer(sender).setLastReceiver(target);
                     }
                     // If not handled (e.g., newCommands false and command like "whisper"), do not cancel
                 }
