@@ -1,6 +1,8 @@
 # ChatCoPlus
 
-ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficient chat system with colored text, ignores, whispers and optional logging.
+**THIS IS NOT INTENDED FOR PRODUCTION-USE; THIS IS A PERSONAL FORK MODIFIED USING AI**
+
+ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficient chat system with colored text, ignores, whispers, announcements, muting, word blacklisting, and optional logging.
 
 ![logo](https://github.com/zeroBzeroT/ChatCoPlus/blob/main/logo.jpg?raw=true)
 
@@ -12,20 +14,25 @@ ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficie
 
 ## Features
 
-- Players can customize their chat message using various prefixes. As an example putting an '>' before a chat message
-  will turn the text green (green-text). (Note: Does not change the color of player names).
-- Players can whisper other players (defaults to a purple color).
-- Players can ignore another player (works for both world and whisper chat). Ignore lists are persistent between logins.
-  Players can also un-ignore a previously ignored player.
-- Allows for a customizable spoiler text system (who wants to ruin the walking dead for everyone?).
-- Players can toggle chat on/off.
-- Full permission support so that you can limit who has access to what colors / features.
-- Allows the administrator to log whispers between players. (This might be against local law.)
+- Players can customize their chat message using various prefixes (e.g., '>' for green-text). Supports inline colors and formatting tags like `<BOLD>`, `<RED>`.
+- Optional Unicode text blocking to prevent invisible text or crashes.
+- Advanced word blacklist with fuzzy matching to detect variations, leetspeak, reversals, and bypass attempts.
+- Players can whisper other players (customizable format, defaults to purple).
+- Players can ignore another player (works for both world and whisper chat). Ignore lists are persistent between logins. Players can also un-ignore or clear the list.
+- Periodic announcements broadcast to all players (configurable messages and delay).
+- Mute system (/mute, /unmute) to blacklist players from chatting, with optional console visibility toggle (/consolemute).
+- Players can toggle chat on/off or disable tells (whispers).
+- Full permission support to limit access to colors, features, and admin commands.
+- Whisper logging and monitoring (logs to file or console).
+- Click-to-whisper on player names in chat.
+- Additional utility commands: `/killme` (suicide), `/spawnpoint` (show bed location).
+- Requires ProtocolLib for advanced packet handling.
 
 ## Source
 
-ChatCoPlus is a rebuild of the famous chat plugin ChatCo created by [jj20051](https://github.com/WiredTombstone), who is
-the founder and current owner of 9b9t. Original source can be found here: https://github.com/2builders2tool/ChatCo
+ChatCoPlus is a rebuild and fork of the famous chat plugin ChatCo created by [jj20051](https://github.com/WiredTombstone), who is the founder and current owner of 9b9t. Original source can be found here: https://github.com/2builders2tool/ChatCo
+
+This fork includes significant updates, enhancements, and AI-assisted modifications for modern Minecraft versions.
 
 ## Popular servers running derivatives of this plugin
 
@@ -36,45 +43,91 @@ the founder and current owner of 9b9t. Original source can be found here: https:
 
 ## Administrative commands
 
-Every single admin command goes by the format "/chatco {component} {e|d}" where 'e' enables and 'd' disables, e.g.
-typing "/chatco whisperlog e" in the console will enable whisper logging. You will have to reload the plugin in order to make most of
-the changes take effect.
+Most admin commands use the format `/chatco {component} {e|d}` where 'e' enables and 'd' disables (e.g., `/chatco whisperlog e`). Reload the plugin after changes.
 
-## Components
+### Components
 
-- **whispers** - enables or disables whisper changes, is **enabled** by default.
-- **newcommands** - enables or disables new whisper commands, is **enabled** by default.
-- **whisperlog** - enables or disables whisper logging (whisper logs are saved in /ChatCo/whisperlog.txt), is **
-  disabled**
-  by default.)
+- **whispers** - Enables/disables whisper functionality (enabled by default).
+- **newcommands** - Enables/disables new whisper commands like `/r`, `/l` (enabled by default).
+- **whisperlog** - Enables/disables whisper logging to `/whisperlog.txt` (disabled by default).
+- **blacklist** - Manage word blacklist:
+  - `/chatco blacklist add <word>` - Add a word (requires `ChatCo.admin.blacklist` permission).
+  - `/chatco blacklist remove <word>` - Remove a word.
+  - `/chatco blacklist list` - List blacklisted words.
+  - `/chatco blacklist test <message>` - Test if a message would be blocked.
+- **reload** - `/chatco reload` - Reloads config, announcements, and blacklist.
+
+### Mute Commands (requires OP or console)
+
+- `/mute <player>` or `/mute reload` - Mutes a player or reloads mute config.
+- `/unmute <player>` - Unmutes a player.
+- `/consolemute <player>` - Toggles if muted player's messages show in console.
 
 ## Player Commands
 
-- **/ignore {player}** - ignores or un-ignores the player.
-- **/ignorelist** - prints all ignored players.
-- **/unignoreall** - clears ignore list
-- **/togglechat** - disables regular chatting for the player - NOT PERSISTENT.
-- **/toggletells** - disables tells for the player - NOT PERSISTENT,
+- `/ignore <player>` - Ignore/un-ignore a player.
+- `/ignored` or `/ignorelist` - List ignored players.
+- `/unignoreall` - Clear ignore list.
+- `/togglechat` - Toggle public chat (not persistent).
+- `/toggletells` - Toggle receiving whispers (not persistent).
+- `/killme` - Instantly kill yourself.
+- `/spawnpoint` - Show your bed spawn coordinates.
 
-## Whisper Related Player Commands
+### Whisper Commands
 
-- **/r** and **/reply** - replies to the last person who sent you a whisper this session.
-- **/l** and **/last** - replies to the last person you sent a whisper to
+- `/w <player> <message>`, `/tell <player> <message>`, `/msg <player> <message>`, `/t <player> <message>`, `/whisper <player> <message>`, `/pm <player> <message>` - Send a whisper.
+- `/r <message>` or `/reply <message>` - Reply to last whisper sender.
+- `/l <message>` or `/last <message>` - Reply to last whisper recipient.
 
 ## Config
 
-Color codes and prefixes can be disabled by replacing the contents with NULL e.g. GREEN: NULL.
-Usage of color codes and prefixes can be restricted by using permissions.
-You can customize the appearance of whispers.
+Located in `config.yml`. Key sections:
+
+- **ChatCo.chatPrefixes** / **ChatCo.chatColors**: Define prefixes and inline codes for colors (e.g., GREEN: '>'). Set to `NULL` to disable.
+- **ChatCo.ignoresEnabled**: Enable ignores (true).
+- **ChatCo.chatDisabled**: Globally disable chat (false).
+- **ChatCo.blockUnicodeText**: Block non-ASCII text (false).
+- **ChatCo.wordBlacklist**: List of banned words (fuzzy matching enabled).
+- **ChatCo.whisperFormat**: Customize send/receive formats with placeholders (%SENDER%, %RECEIVER%) and colors (%RED%, etc.).
+- **ChatCo.whisperLog**: Enable logging (false).
+- **ChatCo.whisperMonitoring**: Log whispers to console (false).
+- **ChatCo.chatToConsole**: Log public chat to console (true).
+- **ChatCo.announcements**: Enable (true), messages list, prefix, delay (seconds).
+- **ChatCo.newCommands**: Enable short whisper commands (true).
+- **ChatCo.whisperOnClick**: Enable click-to-whisper (true).
+- **ChatCo.bStats**: Enable metrics (false).
+- Debug options: `debugUnicodeBlocking`, `debugBlacklistBlocking`.
+
+Permissions in `permissionConfig.yml` or via plugin (e.g., `ChatCo.chatPrefixes.GREEN`).
+
+Color codes and prefixes can be restricted by permissions. Usage of features requires appropriate perms (e.g., `ChatCo.admin.blacklist`).
 
 ## Examples
 
-- Turn chat off/on with /togglechat.
-- Write > at the start of a message for green-text.
+- Toggle chat: `/togglechat`.
+- Green-text: Start message with '>' (if enabled).
+- Whisper: `/w Player Hello!`.
+- Mute player: `/mute PlayerName`.
+- Add blacklist word: `/chatco blacklist add badword`.
+- Announcement config example:
+  ```
+  ChatCo:
+    announcements:
+      enabled: true
+      prefix: "&6[&eAnarchadia&6] "
+      delay: 300
+      messages:
+        - "Welcome to the server!"
+        - "Rules: No doxxing."
+  ```
 
 ## Tested Minecraft Versions
 
-- 1.12.2
+- 1.12.2 (original)
+- 1.16+ (Adventure API integration for modern text components)
+- 1.21 (tested in development)
+
+Requires ProtocolLib. Compatible with Spigot/Paper.
 
 ## Statistics
 
@@ -82,10 +135,4 @@ You can customize the appearance of whispers.
 
 ## Warranty
 
-The Software is provided "as is" and without warranties of any kind, express
-or implied, including but not limited to the warranties of merchantability,
-fitness for a particular purpose, and non-infringement. In no event shall the
-Authors or copyright owners be liable for any claims, damages or other
-liability, whether in an action in contract, tort or otherwise, arising from,
-out of or in connection with the Software or the use or other dealings in the
-Software.
+The Software is provided "as is" and without warranties of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the Authors or copyright owners be liable for any claims, damages or other liability, whether in an action in contract, tort or otherwise, arising from, out of or in connection with the Software or the use or other dealings in the Software.
