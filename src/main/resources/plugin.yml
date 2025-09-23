@@ -35,9 +35,6 @@ commands:
   whisper:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player
-  bed:
-    description: Allows you to see where your bed is set
-    usage: /bed to see the bed location
   tell:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player
@@ -47,9 +44,6 @@ commands:
   message:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player
-  suicide:
-    description: Allows a player to commit seppuku
-    usage: /suicide or /kill
   w:
     description: Allows a player to whisper another player
     usage: /whisper or /w to whisper another player
@@ -59,9 +53,15 @@ commands:
   r:
     description: Allows a player to reply to the last received message
     usage: /reply or /r to reply to your last message
-  blackhole:
-    description: Nonya
-    usage: /blackhole <player name>
+  mute:
+    description: Mutes a player from sending messages (requires op)
+    usage: /mute <player> or /mute reload
+  unmute:
+    description: Unmutes a player (requires op)
+    usage: /unmute <player>
+  consolemute:
+    description: Toggles console logging for a muted player's messages (requires op)
+    usage: /consolemute <player>
 permissions:
   ChatCo.chatPrefixes.GREEN:
     description: Allows you to use to use Green prefixes in chat
