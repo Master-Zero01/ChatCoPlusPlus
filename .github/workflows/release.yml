@@ -1,49 +1,41 @@
-name: release
+name: Build and Release
 
 on:
-  push:
-    tags:
-      - '*'
+  workflow_dispatch:
 
 jobs:
-  release:
+  build-and-release:
     runs-on: ubuntu-latest
-    steps:
+    permissions:
+      contents: write
 
-      - name: Git
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Java
-        uses: actions/setup-java@v4.7.0
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
-          distribution: 'adopt'
-          java-version: '8'
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
 
-      - name: Cache
-        uses: actions/cache@v4.2.3
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Get Project Info
+        run: |
+          echo "ARTIFACT_ID=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)" >> $GITHUB_ENV
+          echo "VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          path: ~/.m2
-          key: '${{ runner.os }}-m2-${{ hashFiles(''**/pom.xml'') }}'
-          restore-keys: '${{ runner.os }}-m2'
-
-      - name: Package
-        run: mvn --batch-mode --show-version --errors package --file pom.xml
-
-      - name: Draft
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          body: 'automated release at commit ${{ github.sha }}'
+          tag_name: v${{ env.VERSION }}.${{ github.run_number }}
+          name: Release ${{ env.VERSION }} Build ${{ github.run_number }}
           draft: false
           prerelease: false
-
-      - name: Release
-        uses: csexton/release-asset-action@v3
-        with:
-          pattern: "target/ChatCoPlus-*.jar"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          release-url: ${{ steps.create_release.outputs.upload_url }}
+          latest: false
+          files: |
+            target/${{ env.ARTIFACT_ID }}-${{ env.VERSION }}.jar
+            target/${{ env.ARTIFACT_ID }}-${{ env.VERSION }}-sources.jar
