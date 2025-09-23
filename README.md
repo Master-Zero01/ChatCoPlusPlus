@@ -6,8 +6,6 @@ ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficie
 
 ![logo](https://github.com/zeroBzeroT/ChatCoPlus/blob/main/logo.jpg?raw=true)
 
-[![discord](https://img.shields.io/discord/843551077759844362?logo=discord)](https://discord.gg/7tW8ZAtGr5)
-[![reddit](https://img.shields.io/reddit/subreddit-subscribers/0b0t)](https://old.reddit.com/r/0b0t/)
 [![release](https://github.com/zeroBzeroT/ChatCoPlus/actions/workflows/release.yml/badge.svg)](https://github.com/zeroBzeroT/ChatCoPlus/actions/workflows/release.yml)
 ![repo size](https://img.shields.io/github/languages/code-size/zeroBzeroT/ChatCoPlus.svg?label=repo%20size)
 [![downloads](https://img.shields.io/github/downloads/zeroBzeroT/ChatCoPlus/total)](https://github.com/zeroBzeroT/ChatCoPlus/releases)
@@ -36,6 +34,7 @@ This fork includes significant updates, enhancements, and AI-assisted modificati
 
 ## Popular servers running derivatives of this plugin
 
+- Anarchadia.org
 - 0b0t.org
 - 2b2t.net
 - 9b9t.com
@@ -128,10 +127,6 @@ Color codes and prefixes can be restricted by permissions. Usage of features req
 - 1.21 (tested in development)
 
 Requires ProtocolLib. Compatible with Spigot/Paper.
-
-## Statistics
-
-![Graph](https://bstats.org/signatures/bukkit/0b0t_ChatCoPlus.svg)
 
 ## Warranty
 
