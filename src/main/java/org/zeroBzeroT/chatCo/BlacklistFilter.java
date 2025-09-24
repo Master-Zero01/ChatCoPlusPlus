@@ -50,8 +50,16 @@ public class BlacklistFilter {
         String lowerMessage = message.toLowerCase();
         String normalizedMessage = Normalizer.normalize(lowerMessage, Normalizer.Form.NFKC);
         String skeleton = spoofChecker.getSkeleton(normalizedMessage);
+
+        // First, do a simple 'contains' check on the skeleton, which is very fast and effective.
+        // This catches cases where the blacklisted word is embedded in other text.
+        for (String wordSkeleton : normalizedBlacklist) {
+            if (wordSkeleton.length() > 0 && skeleton.contains(wordSkeleton)) {
+                return true;
+            }
+        }
         
-        // Check against each pattern
+        // If the simple check fails, proceed with the more complex fuzzy patterns
         for (Pattern pattern : blacklistPatterns) {
             if (pattern.matcher(skeleton).find()) {
                 return true;
