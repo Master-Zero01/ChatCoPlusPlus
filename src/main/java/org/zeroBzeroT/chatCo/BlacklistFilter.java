@@ -93,10 +93,8 @@ public class BlacklistFilter {
         }
         
         StringBuilder patternBuilder = new StringBuilder("(?i)"); // Case insensitive
-        
-        // Handle word boundaries - more strict to prevent false positives
-        patternBuilder.append("(?:\\b|[^a-zA-Z0-9_])");
-        
+        patternBuilder.append("(?<![a-zA-Z0-9])"); // Start after non-alphanum to allow after _
+
         // For each character in the word
         for (int i = 0; i < word.length(); i++) {
             char c = Character.toLowerCase(word.charAt(i));
@@ -112,9 +110,8 @@ public class BlacklistFilter {
             }
         }
         
-        // Handle word boundaries - more strict to prevent false positives
-        patternBuilder.append("(?:\\b|[^a-zA-Z0-9_])");
-        
+        patternBuilder.append("(?![a-zA-Z0-9])"); // End before alphanum to prevent partial matches
+
         return Pattern.compile(patternBuilder.toString());
     }
 
@@ -198,7 +195,7 @@ public class BlacklistFilter {
         }
         
         // Create pattern allowing up to 2 characters to be omitted
-        StringBuilder patternBuilder = new StringBuilder("(?i)(?:\\b|[^a-zA-Z0-9_])");
+        StringBuilder patternBuilder = new StringBuilder("(?i)(?<![a-zA-Z0-9])");
         
         // Track required characters to ensure we're not too loose
         int requiredCharCount = (int)Math.ceil(word.length() * 0.8); // At least 80% of chars must be present
@@ -226,7 +223,7 @@ public class BlacklistFilter {
             patternBuilder.append(")");
         }
         
-        patternBuilder.append("(?:\\b|[^a-zA-Z0-9_])");
+        patternBuilder.append("(?![a-zA-Z0-9])");
         
         // Only proceed if we have enough required characters
         if (totalChars < requiredCharCount) {
