@@ -24,6 +24,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+
+import java.util.Iterator;
+
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public class PublicChat implements Listener {
@@ -164,9 +167,8 @@ public class PublicChat implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        String name = stripColor(player.getDisplayName());
-        String msg = stripColor(event.getMessage());
-        plugin.getLogger().log(Level.INFO, "[CHAT] <%s> %s", name, msg);
+        String fullMessage = "<" + stripColor(player.getDisplayName()) + "> " + stripColor(event.getMessage());
+        plugin.getLogger().log(Level.INFO, "[CHAT] {0}", fullMessage);
     }
 
     @EventHandler
