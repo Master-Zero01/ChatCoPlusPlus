@@ -16,12 +16,9 @@ import static org.zeroBzeroT.chatCo.Utils.getDirectColorCode;
 import static org.zeroBzeroT.chatCo.Utils.parseFormattingTags;
 import static org.zeroBzeroT.chatCo.Utils.stripColor;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -37,7 +34,7 @@ public class PublicChat implements Listener {
         PublicChat.plugin = plugin;
         File customConfig = Main.PermissionConfig;
         permissionConfig = YamlConfiguration.loadConfiguration(customConfig);
-        setupListener();
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     public String replacePrefixColors(String message, final Player player) {
@@ -68,106 +65,108 @@ public class PublicChat implements Listener {
         return message;
     }
 
-    private void setupListener() {
-        ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void preProcessChat(AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+        String message = event.getMessage();
 
-        protocolManager.addPacketListener(new PacketAdapter(PublicChat.plugin,
-                ListenerPriority.LOWEST,
-                PacketType.Play.Client.CHAT) {
-            @SuppressWarnings("deprecation")
-            @Override
-            public void onPacketReceiving(PacketEvent event) {
-                Player player = event.getPlayer();
-                String message = event.getPacket().getStrings().read(0);
-
-                // Check for unicode characters if the feature is enabled
-                if (PublicChat.plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
-                    // Log blocked message if debug is enabled
-                    if (PublicChat.plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
-                        plugin.getLogger().info("Blocked unicode message from " + player.getName() + ": " + message);
-                    }
-                    // Silently drop the message
-                    event.setCancelled(true);
-                    return;
-                }
-                
-                // Check for blacklisted words
-                if (PublicChat.plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
-                    // Log blocked message if debug is enabled
-                    if (PublicChat.plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
-                        plugin.getLogger().info("Blocked blacklisted word from " + player.getName() + ": " + message);
-                    }
-                    // Silently drop the message
-                    event.setCancelled(true);
-                    return;
-                }
-
-                // Convert to legacy format
-                String legacyMessage = LegacyComponentSerializer.legacyAmpersand().serialize(Component.text(message));
-                
-                // Apply prefix colors
-                legacyMessage = replacePrefixColors(legacyMessage, player);
-                
-                // Apply inline colors
-                legacyMessage = replaceInlineColors(legacyMessage, player);
-                
-                // Parse any formatting tags like <BOLD>, <UNDERLINE>, etc.
-                legacyMessage = parseFormattingTags(legacyMessage);
-
-                if (stripColor(legacyMessage).trim().isEmpty()) {
-                    event.setCancelled(true);
-                    return;
-                }
-
-                TextComponent messageText = componentFromLegacyText(legacyMessage);
-                TextComponent messageSender = componentFromLegacyText(player.getDisplayName());
-
-                if (PublicChat.plugin.getConfig().getBoolean("ChatCo.whisperOnClick", true)) {
-                    messageSender = messageSender.clickEvent(ClickEvent.suggestCommand("/w " + player.getName() + " "));
-                    messageSender = messageSender.hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Whisper to " + player.getName())));
-                }
-
-                TextComponent chatMessage = Component.text("")
-                        .append(componentFromLegacyText("<"))
-                        .append(messageSender)
-                        .append(componentFromLegacyText("> "))
-                        .append(messageText);
-
-                boolean isBlackholed = BlackholeModule.isPlayerBlacklisted(player);
-
-                if (!PublicChat.plugin.getConfig().getBoolean("ChatCo.chatDisabled", false)) {
-                    if (isBlackholed) {
-                        if (!BlackholeModule.isPlayerHidden(player)) {
-                            plugin.getLogger().log(Level.INFO, "Blocked message from {0}: {1}", new Object[]{player.getName(), stripColor(LegacyComponentSerializer.legacySection().serialize(chatMessage))});
-                        }
-                        player.sendMessage(chatMessage);
-                    } else {
-                        for (Player recipient : plugin.getServer().getOnlinePlayers()) {
-                            try {
-                                ChatPlayer chatPlayer = PublicChat.plugin.getChatPlayer(recipient);
-
-                                if (chatPlayer.chatDisabled)
-                                    continue;
-
-                                if (chatPlayer.isIgnored(player.getName()) && PublicChat.plugin.getConfig().getBoolean("ChatCo.ignoresEnabled", true))
-                                    continue;
-
-                                recipient.sendMessage(chatMessage);
-                            } catch (NullPointerException e) {
-                                plugin.getLogger().log(Level.WARNING, "Error sending chat message", e);
-                            }
-                        }
-                        
-                        // Log to console if enabled
-                        if (PublicChat.plugin.getConfig().getBoolean("ChatCo.chatToConsole", true)) {
-                            String consoleMessage = stripColor(LegacyComponentSerializer.legacySection().serialize(chatMessage));
-                            plugin.getLogger().log(Level.INFO, "[CHAT] {0}", consoleMessage);
-                        }
-                    }
-                }
-                event.setCancelled(true);
+        // Check for unicode characters if the feature is enabled
+        if (PublicChat.plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(message)) {
+            // Log blocked message if debug is enabled
+            if (PublicChat.plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                plugin.getLogger().info("Blocked unicode message from " + player.getName() + ": " + message);
             }
-        });
+            event.setCancelled(true);
+            return;
+        }
+        
+        // Check for blacklisted words
+        if (PublicChat.plugin.getBlacklistFilter().containsBlacklistedWord(message)) {
+            // Log blocked message if debug is enabled
+            if (PublicChat.plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                plugin.getLogger().info("Blocked blacklisted word from " + player.getName() + ": " + message);
+            }
+            event.setCancelled(true);
+            return;
+        }
+
+        // Apply prefix colors
+        String legacyMessage = replacePrefixColors(message, player);
+        
+        // Apply inline colors
+        legacyMessage = replaceInlineColors(legacyMessage, player);
+        
+        // Parse any formatting tags like <BOLD>, <UNDERLINE>, etc.
+        legacyMessage = parseFormattingTags(legacyMessage);
+
+        if (stripColor(legacyMessage).trim().isEmpty()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        event.setMessage(legacyMessage);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void filterChatRecipients(AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+        boolean chatDisabledGlobal = PublicChat.plugin.getConfig().getBoolean("ChatCo.chatDisabled", false);
+        if (chatDisabledGlobal) {
+            event.setCancelled(true);
+            return;
+        }
+
+        boolean isBlackholed = BlackholeModule.isPlayerBlacklisted(player);
+
+        Iterator<Player> iterator = event.getRecipients().iterator();
+        while (iterator.hasNext()) {
+            Player recipient = iterator.next();
+            if (recipient.equals(player)) {
+                continue; // Sender always sees their own message
+            }
+
+            ChatPlayer chatPlayer = PublicChat.plugin.getChatPlayer(recipient);
+            if (chatPlayer != null) {
+                if (chatPlayer.chatDisabled) {
+                    iterator.remove();
+                    continue;
+                }
+                if (chatPlayer.isIgnored(player.getName()) && PublicChat.plugin.getConfig().getBoolean("ChatCo.ignoresEnabled", true)) {
+                    iterator.remove();
+                    continue;
+                }
+            }
+        }
+
+        if (isBlackholed) {
+            // Only sender sees it; remove all other recipients
+            iterator = event.getRecipients().iterator();
+            while (iterator.hasNext()) {
+                Player recipient = iterator.next();
+                if (!recipient.equals(player)) {
+                    iterator.remove();
+                }
+            }
+            // Log blocked message if not hidden
+            if (!BlackholeModule.isPlayerHidden(player)) {
+                String legacyMessage = event.getMessage();
+                plugin.getLogger().log(Level.INFO, "Blocked message from {0}: {1}", new Object[]{player.getName(), stripColor(legacyMessage)});
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void logChatToConsole(AsyncPlayerChatEvent event) {
+        if (event.isCancelled()) {
+            return;
+        }
+        if (!PublicChat.plugin.getConfig().getBoolean("ChatCo.chatToConsole", true)) {
+            return;
+        }
+        Player player = event.getPlayer();
+        String name = stripColor(player.getDisplayName());
+        String msg = stripColor(event.getMessage());
+        plugin.getLogger().log(Level.INFO, "[CHAT] <%s> %s", name, msg);
     }
 
     @EventHandler
