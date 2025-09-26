@@ -29,10 +29,15 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Whispers implements Listener {
     private final Main plugin;
@@ -185,7 +190,8 @@ public class Whispers implements Listener {
                 WrappedChatComponent[] arguments = event.getPacket().getSpecificModifier(WrappedChatComponent[].class).read(0);
                 List<String> argTexts = new ArrayList<>();
                 for (WrappedChatComponent wc : arguments) {
-                    Component comp = wc.asBukkitComponent();
+                    String json = wc.getJson();
+                    Component comp = GsonComponentSerializer.gson().deserialize(json);
                     String legacy = LegacyComponentSerializer.legacyAmpersand().serialize(comp);
                     argTexts.add(legacy);
                 }
@@ -280,7 +286,7 @@ public class Whispers implements Listener {
                         return;
                     }
 
-                    String playerNamePlain = PlainTextComponentSerializer.plainText().serialize(arguments[0].asBukkitComponent());
+                    String playerNamePlain = PlainTextComponentSerializer.plainText().serialize(GsonComponentSerializer.gson().deserialize(arguments[0].getJson()));
                     final Player target = Bukkit.getPlayerExact(playerNamePlain);
 
                     if (target == null || isVanished(target)) {
