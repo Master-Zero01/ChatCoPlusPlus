@@ -1,17 +1,15 @@
 package org.zeroBzeroT.chatCo;
 
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
+import java.util.regex.*;
 import java.util.stream.Collectors;
 import java.text.Normalizer;
 import com.ibm.icu.text.SpoofChecker;
 
 public class BlacklistFilter {
     private final Main plugin;
-    private List<Pattern> blacklistPatterns;
-    private List<String> normalizedBlacklist;
     private final SpoofChecker spoofChecker;
+    private List<BlacklistEntry> blacklistEntries;
 
     public BlacklistFilter(Main plugin) {
         this.plugin = plugin;
@@ -19,260 +17,147 @@ public class BlacklistFilter {
         reloadBlacklist();
     }
 
-    /**
-     * Reload the blacklist from config
-     */
+    /** Reload the blacklist from config */
     public void reloadBlacklist() {
-        List<String> blacklist = plugin.getConfig().getStringList("ChatCo.wordBlacklist");
-        normalizedBlacklist = blacklist.stream()
-                .map(word -> {
-                    String normalized = Normalizer.normalize(word.toLowerCase(), Normalizer.Form.NFKC);
-                    return spoofChecker.getSkeleton(normalized);
-                })
-                .collect(Collectors.toList());
-        blacklistPatterns = normalizedBlacklist.stream()
-                .map(this::createFuzzyPattern)
-                .collect(Collectors.toList());
+        List<String> words = plugin.getConfig().getStringList("ChatCo.wordBlacklist");
+
+        blacklistEntries = words.stream()
+            .map(this::normalizeAndSkeleton)
+            .filter(s -> !s.isEmpty())
+            .map(this::createEntry)
+            .toList();
     }
 
-
-    /**
-     * Check if a message contains any blacklisted words
-     * @param message The message to check
-     * @return true if the message contains blacklisted words, false otherwise
-     */
+    /** Check if a message contains blacklisted words */
     public boolean containsBlacklistedWord(String message) {
-        if (message == null || message.isEmpty()) {
-            return false;
+        if (message == null || message.isBlank()) return false;
+
+        String skeleton = normalizeAndSkeleton(message);
+
+        for (BlacklistEntry entry : blacklistEntries) {
+            // Fast contains check
+            if (skeleton.contains(entry.skeleton)) return true;
+
+            // Fuzzy regex check
+            if (entry.fuzzyPattern.matcher(skeleton).find()) return true;
+
+            // Reversed check (if applicable)
+            if (entry.reversedPattern != null && entry.reversedPattern.matcher(skeleton).find()) {
+                return true;
+            }
+
+            // Omission check (if applicable)
+            if (entry.omissionPattern != null && matchesWithOmission(skeleton, entry)) {
+                return true;
+            }
         }
 
-        // Convert to lowercase for case-insensitive matching
-        String lowerMessage = message.toLowerCase();
-        String normalizedMessage = Normalizer.normalize(lowerMessage, Normalizer.Form.NFKC);
-        String skeleton = spoofChecker.getSkeleton(normalizedMessage);
-
-        // First, do a simple 'contains' check on the skeleton, which is very fast and effective.
-        // This catches cases where the blacklisted word is embedded in other text.
-        for (String wordSkeleton : normalizedBlacklist) {
-            if (wordSkeleton.length() > 0 && skeleton.contains(wordSkeleton)) {
-                return true;
-            }
-        }
-        
-        // If the simple check fails, proceed with the more complex fuzzy patterns
-        for (Pattern pattern : blacklistPatterns) {
-            if (pattern.matcher(skeleton).find()) {
-                return true;
-            }
-        }
-        
-        // Check for reversed words and other variations only for words longer than 5 chars
-        for (String word : normalizedBlacklist) {
-            if (word.length() > 5 && containsVariation(skeleton, word)) {
-                return true;
-            }
-        }
-        
         return false;
     }
 
-    /**
-     * Create a regex pattern that matches variations of a word with ASCII-only bypass prevention
-     * - Handles repeated letters (e.g., "gooooogle" matches "google")
-     * - Handles inserted characters (e.g., "g_o_o_g_l_e" matches "google")
-     * - Handles common ASCII character substitutions (e.g., "g00gle" matches "google")
-     * - Handles spacing and mixed separators
-     * - Handles leetspeak and number substitutions
-     * 
-     * @param word The word to create a pattern for
-     * @return A compiled Pattern that matches variations of the word
-     */
-    private Pattern createFuzzyPattern(String word) {
-        if (word == null || word.isEmpty()) {
-            return Pattern.compile("");
-        }
-        
-        StringBuilder patternBuilder = new StringBuilder("(?i)"); // Case insensitive
-        patternBuilder.append("(?<![a-zA-Z0-9])"); // Start after non-alphanum to allow after _
-
-        // For each character in the word
-        for (int i = 0; i < word.length(); i++) {
-            char c = Character.toLowerCase(word.charAt(i));
-            
-            // Create character class with common ASCII substitutions
-            String charPattern = createAsciiSubstitutions(c);
-            patternBuilder.append("(?:").append(charPattern).append(")");
-            patternBuilder.append("+"); // One or more occurrences to handle repeats
-            
-            // Allow separators between characters, but more restrictive now
-            if (i < word.length() - 1) {
-                patternBuilder.append(createAsciiSeparatorPattern());
-            }
-        }
-        
-        patternBuilder.append("(?![a-zA-Z0-9])"); // End before alphanum to prevent partial matches
-
-        return Pattern.compile(patternBuilder.toString());
+    /** Normalize and generate spoof skeleton */
+    private String normalizeAndSkeleton(String input) {
+        String lower = input.toLowerCase();
+        String normalized = Normalizer.normalize(lower, Normalizer.Form.NFKC);
+        return spoofChecker.getSkeleton(normalized);
     }
 
-    /**
-     * Create ASCII character substitution patterns for common bypasses
-     */
+    /** Build all patterns for one word */
+    private BlacklistEntry createEntry(String word) {
+        Pattern fuzzy = createFuzzyPattern(word);
+
+        Pattern reversed = null;
+        if (word.length() >= 5) {
+            String reversedWord = new StringBuilder(word).reverse().toString();
+            reversed = createFuzzyPattern(reversedWord);
+        }
+
+        Pattern omission = null;
+        if (word.length() > 6) {
+            omission = createOmissionPattern(word);
+        }
+
+        return new BlacklistEntry(word, fuzzy, reversed, omission);
+    }
+
+    /** Create fuzzy regex pattern for a word */
+    private Pattern createFuzzyPattern(String word) {
+        StringBuilder regex = new StringBuilder("(?i)(?<![a-zA-Z0-9])");
+        for (int i = 0; i < word.length(); i++) {
+            regex.append("(?:").append(createAsciiSubstitutions(word.charAt(i))).append(")+");
+            if (i < word.length() - 1) regex.append("[\\s_.-]*");
+        }
+        regex.append("(?![a-zA-Z0-9])");
+        return Pattern.compile(regex.toString());
+    }
+
+    /** Create omission regex (allows skipped chars, still requires anchors) */
+    private Pattern createOmissionPattern(String word) {
+        StringBuilder regex = new StringBuilder("(?i)(?<![a-zA-Z0-9])");
+        for (int i = 0; i < word.length(); i++) {
+            String charClass = createAsciiSubstitutions(word.charAt(i));
+            boolean required = (i < 2 || i >= word.length() - 2); // force first/last chars
+            regex.append("(?:").append(charClass).append(required ? "+" : "*").append(")");
+            if (i < word.length() - 1) regex.append("[\\s_.-]*");
+        }
+        regex.append("(?![a-zA-Z0-9])");
+        return Pattern.compile(regex.toString());
+    }
+
+    /** ASCII substitutions */
     private String createAsciiSubstitutions(char c) {
         return switch (Character.toLowerCase(c)) {
             case 'a' -> "[a@4^]";
             case 'b' -> "[b6]";
             case 'c' -> "[c(]";
-            case 'd' -> "[d]";
             case 'e' -> "[e3]";
-            case 'f' -> "[f]";
             case 'g' -> "[g9]";
             case 'h' -> "[h#]";
             case 'i' -> "[i1!|]";
-            case 'j' -> "[j]";
-            case 'k' -> "[k]";
             case 'l' -> "[l1|!]";
-            case 'm' -> "[m]";
-            case 'n' -> "[n]";
             case 'o' -> "[o0]";
-            case 'p' -> "[p]";
             case 'q' -> "[q9]";
-            case 'r' -> "[r]";
             case 's' -> "[s5$]";
             case 't' -> "[t7+]";
-            case 'u' -> "[u]";
-            case 'v' -> "[v]";
-            case 'w' -> "[w]";
-            case 'x' -> "[x]";
-            case 'y' -> "[y]";
             case 'z' -> "[z2]";
             default -> Pattern.quote(String.valueOf(c));
         };
     }
 
-    /**
-     * Create ASCII separator pattern to handle various bypass attempts
-     */
-    private String createAsciiSeparatorPattern() {
-        return "(?:" +
-            // Zero or more non-alphanumeric ASCII characters, but more restrictive
-            "[\\s_.-]*" + // Only allow specific separators like space, underscore, dots, dashes
-            ")?";
-    }
-
-    /**
-     * Enhanced method to also handle reversed text and character omission
-     */
-    public boolean containsVariation(String text, String word) {
-        if (text == null || word == null || word.isEmpty() || word.length() < 5) {
-            return false;
+    /** Check if omission regex yields >=80% match */
+    private boolean matchesWithOmission(String text, BlacklistEntry entry) {
+        Matcher m = entry.omissionPattern.matcher(text);
+        while (m.find()) {
+            int matchedChars = countAlphanumeric(m.group());
+            if (matchedChars >= (entry.skeleton.length() * 0.8)) return true;
         }
-        
-        // Check reversed word (common bypass) - only for words of sufficient length
-        if (word.length() >= 5) {
-            String reversedWord = new StringBuilder(word).reverse().toString();
-            Pattern reversedPattern = createFuzzyPattern(reversedWord);
-            if (reversedPattern.matcher(text).find()) {
-                return true;
-            }
-        }
-        
-        // Check with characters omitted - only for longer words to avoid false positives
-        if (word.length() > 6) {
-            return checkOmittedCharacters(text, word);
-        }
-        
         return false;
     }
 
-    /**
-     * Check for matches with characters omitted (e.g., "bword" matches "badword")
-     */
-    private boolean checkOmittedCharacters(String text, String word) {
-        // Minimum length check to avoid false positives
-        if (word.length() < 7) {
-            return false;
-        }
-        
-        // Create pattern allowing up to 2 characters to be omitted
-        StringBuilder patternBuilder = new StringBuilder("(?i)(?<![a-zA-Z0-9])");
-        
-        // Track required characters to ensure we're not too loose
-        int requiredCharCount = (int)Math.ceil(word.length() * 0.8); // At least 80% of chars must be present
-        int totalChars = 0;
-        
-        for (int i = 0; i < word.length(); i++) {
-            char c = Character.toLowerCase(word.charAt(i));
-            String charPattern = createAsciiSubstitutions(c);
-            
-            // First and last two characters should be required to avoid false positives
-            boolean isRequired = (i < 2 || i >= word.length() - 2);
-            
-            if (isRequired) {
-                patternBuilder.append("(?:").append(charPattern).append("+");
-                totalChars++;
-            } else {
-                // Make this character optional for omission bypass
-                patternBuilder.append("(?:").append(charPattern).append("*");
-            }
-            
-            if (i < word.length() - 1) {
-                patternBuilder.append(createAsciiSeparatorPattern());
-            }
-            
-            patternBuilder.append(")");
-        }
-        
-        patternBuilder.append("(?![a-zA-Z0-9])");
-        
-        // Only proceed if we have enough required characters
-        if (totalChars < requiredCharCount) {
-            return false;
-        }
-        
-        Pattern omissionPattern = Pattern.compile(patternBuilder.toString());
-        String match = findLongestMatch(text, omissionPattern);
-        
-        // Only consider it a match if at least 80% of characters are present
-        if (match != null) {
-            int matchedChars = countAlphanumeric(match);
-            return matchedChars >= (word.length() * 0.8);
-        }
-        
-        return false;
-    }
-
-    /**
-     * Find the longest match for a pattern
-     */
-    private String findLongestMatch(String text, Pattern pattern) {
-        Matcher matcher = pattern.matcher(text);
-        String longestMatch = null;
-        int maxLength = 0;
-        
-        while (matcher.find()) {
-            String match = matcher.group();
-            if (match.length() > maxLength) {
-                maxLength = match.length();
-                longestMatch = match;
-            }
-        }
-        
-        return longestMatch;
-    }
-
-    /**
-     * Count alphanumeric characters in a string
-     */
+    /** Count alphanumeric characters in a string */
     private int countAlphanumeric(String str) {
         return (int) str.chars().filter(Character::isLetterOrDigit).count();
     }
 
-
-    /**
-     * Get the current blacklist patterns for debugging
-     */
+    /** Debug: get fuzzy patterns */
     public List<Pattern> getBlacklistPatterns() {
-        return blacklistPatterns;
+        return blacklistEntries.stream()
+            .map(e -> e.fuzzyPattern)
+            .collect(Collectors.toList());
     }
-} 
+
+    /** Holder for blacklist word + its regex variations */
+    private static class BlacklistEntry {
+        final String skeleton;
+        final Pattern fuzzyPattern;
+        final Pattern reversedPattern;
+        final Pattern omissionPattern;
+
+        BlacklistEntry(String skeleton, Pattern fuzzy, Pattern reversed, Pattern omission) {
+            this.skeleton = skeleton;
+            this.fuzzyPattern = fuzzy;
+            this.reversedPattern = reversed;
+            this.omissionPattern = omission;
+        }
+    }
+}
