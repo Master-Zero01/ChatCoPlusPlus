@@ -23,7 +23,6 @@ ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficie
 - Full permission support to limit access to colors, features, and admin commands.
 - Whisper logging and monitoring (logs to file or console).
 - Click-to-whisper on player names in chat.
-- Requires ProtocolLib for advanced packet handling.
 
 ## Source
 
@@ -123,7 +122,7 @@ Color codes and prefixes can be restricted by permissions. Usage of features req
 - 1.16+ (Adventure API integration for modern text components)
 - 1.21 (tested in development)
 
-Requires ProtocolLib. Compatible with Spigot/Paper.
+Compatible with Spigot/Paper.
 
 ## Warranty
 

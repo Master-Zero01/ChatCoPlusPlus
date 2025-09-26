@@ -12,7 +12,10 @@ import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 import static org.zeroBzeroT.chatCo.Utils.containsUnicode;
 import static org.zeroBzeroT.chatCo.Utils.getDirectColorCode;
@@ -21,25 +24,14 @@ import static org.zeroBzeroT.chatCo.Utils.now;
 import static org.zeroBzeroT.chatCo.Utils.parseFormattingTags;
 import static org.zeroBzeroT.chatCo.Utils.stripColor;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 public class Whispers implements Listener {
     private final Main plugin;
 
     public Whispers(Main plugin) {
         this.plugin = plugin;
-        setupListener();
     }
 
     private static final Map<String, String> COLOR_PLACEHOLDER_MAP = new HashMap<>();
@@ -166,144 +158,130 @@ public class Whispers implements Listener {
         }
     }
 
-    private void setupListener() {
-        if (Bukkit.getPluginManager().getPlugin("ProtocolLib") == null) {
-            plugin.getLogger().warning("ProtocolLib not found! Whisper command handling will not work properly.");
-            return;
-        }
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
+        Player sender = event.getPlayer();
+        String fullCommand = event.getMessage();
+        String[] args = fullCommand.split(" ");
+        String cmdName = args[0].substring(1).toLowerCase();
 
-        ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
-
-        protocolManager.addPacketListener(new PacketAdapter(plugin,
-                ListenerPriority.HIGHEST,
-                PacketType.Play.Client.CHAT_COMMAND) {
-            @SuppressWarnings("deprecation")
-            @Override
-            public void onPacketReceiving(PacketEvent event) {
-                Player sender = event.getPlayer();
-                String command = event.getPacket().getStrings().read(0);
-                String[] args = command.split(" ");
-                String cmdName = args[0].toLowerCase();
-
-                if (plugin.getConfig().getBoolean("ChatCo.lastCommand", true) && (cmdName.equals("l") || cmdName.equals("last"))) {
-                    if (args.length < 2) {
-                        sender.sendMessage(componentFromLegacyText("&eUsage: /l <message>"));
-                        event.setCancelled(true);
-                        return;
-                    }
-
-                    final Player target = ((Main) plugin).getChatPlayer(sender).getLastReceiver();
-
-                    if ((target == null && ((Main) plugin).getChatPlayer(sender).LastReceiver != null)
-                            || isVanished(target)) {
-                        sender.sendMessage(componentFromLegacyText("&cThe last person you sent a private message to is offline."));
-                    } else if (target == null) {
-                        sender.sendMessage(componentFromLegacyText("&cYou have not initiated any private message in this session."));
-                    } else {
-                        String whisperMessage = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
-                        
-                        // Check for unicode characters
-                        if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
-                            if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
-                                plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
-                            }
-                            event.setCancelled(true);
-                            return;
-                        }
-                        
-                        // Check for blacklisted words
-                        if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
-                            if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
-                                plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
-                            }
-                            event.setCancelled(true);
-                            return;
-                        }
-                        
-                        sendPrivateMessage(sender, target, whisperMessage);
-                    }
-
-                    event.setCancelled(true);
-                } else if (plugin.getConfig().getBoolean("ChatCo.replyCommands", true) && (cmdName.equals("r") || cmdName.equals("reply"))) {
-                    if (args.length < 2) {
-                        sender.sendMessage(componentFromLegacyText("&eUsage: /r <message>"));
-                        event.setCancelled(true);
-                        return;
-                    }
-
-                    final Player target = ((Main) plugin).getChatPlayer(sender).getLastMessenger();
-
-                    if ((target == null && ((Main) plugin).getChatPlayer(sender).LastMessenger != null)
-                            || isVanished(target)) {
-                        sender.sendMessage(componentFromLegacyText("&cThe last person you received a private message from is offline."));
-                    } else if (target == null) {
-                        sender.sendMessage(componentFromLegacyText("&cYou have not received any private messages in this session."));
-                    } else {
-                        String whisperMessage = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
-                        
-                        // Check for unicode characters
-                        if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
-                            if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
-                                plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
-                            }
-                            event.setCancelled(true);
-                            return;
-                        }
-                        
-                        // Check for blacklisted words
-                        if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
-                            if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
-                                plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
-                            }
-                            event.setCancelled(true);
-                            return;
-                        }
-                        
-                        sendPrivateMessage(sender, target, whisperMessage);
-                    }
-
-                    event.setCancelled(true);
-                } else if (cmdName.equals("tell") || cmdName.equals("msg") || cmdName.equals("t") || cmdName.equals("w") || cmdName.equals("whisper") || cmdName.equals("pm")) {
-                    if (args.length < 3) {
-                        sender.sendMessage(componentFromLegacyText("&eUsage: /w <player> <message>"));
-                        event.setCancelled(true);
-                        return;
-                    }
-
-                    final Player target = Bukkit.getPlayerExact(args[1]);
-
-                    if (target == null || isVanished(target)) {
-                        sender.sendMessage(componentFromLegacyText("&c" + args[1] + " is offline."));
-                        event.setCancelled(true);
-                        return;
-                    }
-
-                    String whisperMessage = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
-                    
-                    // Check for unicode characters
-                    if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
-                        if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
-                            plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
-                        }
-                        event.setCancelled(true);
-                        return;
-                    }
-                    
-                    // Check for blacklisted words
-                    if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
-                        if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
-                            plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
-                        }
-                        event.setCancelled(true);
-                        return;
-                    }
-                    
-                    sendPrivateMessage(sender, target, whisperMessage);
-                    event.setCancelled(true);
-                    ((Main) plugin).getChatPlayer(sender).setLastReceiver(target);
-                }
-                // If not a whisper command, do not cancel
+        if (plugin.getConfig().getBoolean("ChatCo.lastCommand", true) && (cmdName.equals("l") || cmdName.equals("last"))) {
+            if (args.length < 2) {
+                sender.sendMessage(componentFromLegacyText("&eUsage: /l <message>"));
+                event.setCancelled(true);
+                return;
             }
-        });
+
+            final Player target = ((Main) plugin).getChatPlayer(sender).getLastReceiver();
+
+            if ((target == null && ((Main) plugin).getChatPlayer(sender).LastReceiver != null)
+                    || isVanished(target)) {
+                sender.sendMessage(componentFromLegacyText("&cThe last person you sent a private message to is offline."));
+            } else if (target == null) {
+                sender.sendMessage(componentFromLegacyText("&cYou have not initiated any private message in this session."));
+            } else {
+                String whisperMessage = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
+                
+                // Check for unicode characters
+                if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
+                    if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                        plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
+                // Check for blacklisted words
+                if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
+                    if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                        plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
+                sendPrivateMessage(sender, target, whisperMessage);
+            }
+
+            event.setCancelled(true);
+        } else if (plugin.getConfig().getBoolean("ChatCo.replyCommands", true) && (cmdName.equals("r") || cmdName.equals("reply"))) {
+            if (args.length < 2) {
+                sender.sendMessage(componentFromLegacyText("&eUsage: /r <message>"));
+                event.setCancelled(true);
+                return;
+            }
+
+            final Player target = ((Main) plugin).getChatPlayer(sender).getLastMessenger();
+
+            if ((target == null && ((Main) plugin).getChatPlayer(sender).LastMessenger != null)
+                    || isVanished(target)) {
+                sender.sendMessage(componentFromLegacyText("&cThe last person you received a private message from is offline."));
+            } else if (target == null) {
+                sender.sendMessage(componentFromLegacyText("&cYou have not received any private messages in this session."));
+            } else {
+                String whisperMessage = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
+                
+                // Check for unicode characters
+                if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
+                    if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                        plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
+                // Check for blacklisted words
+                if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
+                    if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                        plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
+                    }
+                    event.setCancelled(true);
+                    return;
+                }
+                
+                sendPrivateMessage(sender, target, whisperMessage);
+            }
+
+            event.setCancelled(true);
+        } else if (cmdName.equals("tell") || cmdName.equals("msg") || cmdName.equals("t") || cmdName.equals("w") || cmdName.equals("whisper") || cmdName.equals("pm")) {
+            if (args.length < 3) {
+                sender.sendMessage(componentFromLegacyText("&eUsage: /w <player> <message>"));
+                event.setCancelled(true);
+                return;
+            }
+
+            final Player target = Bukkit.getPlayerExact(args[1]);
+
+            if (target == null || isVanished(target)) {
+                sender.sendMessage(componentFromLegacyText("&c" + args[1] + " is offline."));
+                event.setCancelled(true);
+                return;
+            }
+
+            String whisperMessage = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
+            
+            // Check for unicode characters
+            if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
+                if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
+                    plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
+                }
+                event.setCancelled(true);
+                return;
+            }
+            
+            // Check for blacklisted words
+            if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
+                if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
+                    plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
+                }
+                event.setCancelled(true);
+                return;
+            }
+            
+            sendPrivateMessage(sender, target, whisperMessage);
+            event.setCancelled(true);
+            ((Main) plugin).getChatPlayer(sender).setLastReceiver(target);
+        }
+        // If not a whisper command, do not cancel
     }
 }

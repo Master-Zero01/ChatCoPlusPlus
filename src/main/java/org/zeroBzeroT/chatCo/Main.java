@@ -22,11 +22,6 @@ import org.jetbrains.annotations.NotNull;
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 import static org.zeroBzeroT.chatCo.Utils.saveStreamToFile;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-
 public class Main extends JavaPlugin {
     public static File PermissionConfig;
     public static File WhisperLog;
