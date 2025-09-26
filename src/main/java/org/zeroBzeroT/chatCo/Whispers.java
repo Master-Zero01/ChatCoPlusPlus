@@ -180,8 +180,9 @@ public class Whispers implements Listener {
                 Player sender = event.getPlayer();
                 String command = event.getPacket().getStrings().read(0);
                 String[] args = command.split(" ");
+                String cmdName = args[0].substring(1).toLowerCase(); // Strip leading / and normalize
 
-                if (plugin.getConfig().getBoolean("ChatCo.lastCommand", true) && (args[0].equalsIgnoreCase("l") || args[0].equalsIgnoreCase("last"))) {
+                if (plugin.getConfig().getBoolean("ChatCo.lastCommand", true) && (cmdName.equals("l") || cmdName.equals("last"))) {
                     if (args.length == 1) {
                         sender.sendMessage(componentFromLegacyText("&eUsage: /l <message>"));
                         event.setCancelled(true);
@@ -222,7 +223,7 @@ public class Whispers implements Listener {
                     }
 
                     event.setCancelled(true);
-                } else if (plugin.getConfig().getBoolean("ChatCo.replyCommands", true) && (args[0].equalsIgnoreCase("r") || args[0].equalsIgnoreCase("reply"))) {
+                } else if (plugin.getConfig().getBoolean("ChatCo.replyCommands", true) && (cmdName.equals("r") || cmdName.equals("reply"))) {
                     if (args.length == 1) {
                         sender.sendMessage(componentFromLegacyText("&eUsage: /r <message>"));
                         event.setCancelled(true);
@@ -263,7 +264,7 @@ public class Whispers implements Listener {
                     }
 
                     event.setCancelled(true);
-                } else if (args[0].equalsIgnoreCase("tell") || args[0].equalsIgnoreCase("msg") || args[0].equalsIgnoreCase("t") || args[0].equalsIgnoreCase("w") || args[0].equalsIgnoreCase("whisper") || args[0].equalsIgnoreCase("pm")) {
+                } else if (cmdName.equals("tell") || cmdName.equals("msg") || cmdName.equals("t") || cmdName.equals("w") || cmdName.equals("whisper") || cmdName.equals("pm")) {
                     if (args.length < 3) {
                         sender.sendMessage(componentFromLegacyText("&eUsage: /w <player> <message>"));
                         event.setCancelled(true);
@@ -304,7 +305,7 @@ public class Whispers implements Listener {
                         sendPrivateMessage(sender, target, whisperMessage);
                         event.setCancelled(true);
                         ((Main) plugin).getChatPlayer(sender).setLastReceiver(target);
-                    } else if (args[0].toLowerCase().startsWith("tell") || args[0].toLowerCase().startsWith("w") || args[0].toLowerCase().startsWith("msg")) {
+                    } else if (cmdName.startsWith("tell") || cmdName.startsWith("w") || cmdName.startsWith("msg")) {
                         String whisperMessage = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
                         
                         // Check for unicode characters
