@@ -29,15 +29,10 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
-import com.comphenix.protocol.wrappers.WrappedChatComponent;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class Whispers implements Listener {
     private final Main plugin;
@@ -187,36 +182,28 @@ public class Whispers implements Listener {
             public void onPacketReceiving(PacketEvent event) {
                 Player sender = event.getPlayer();
                 String command = event.getPacket().getStrings().read(0);
-                WrappedChatComponent[] arguments = event.getPacket().getSpecificModifier(WrappedChatComponent[].class).read(0);
-                List<String> argTexts = new ArrayList<>();
-                for (WrappedChatComponent wc : arguments) {
-                    String json = wc.getJson();
-                    Component comp = GsonComponentSerializer.gson().deserialize(json);
-                    String legacy = LegacyComponentSerializer.legacyAmpersand().serialize(comp);
-                    argTexts.add(legacy);
-                }
-                String cmdName = command.toLowerCase();
+                String[] args = command.split(" ");
+                String cmdName = args[0].toLowerCase();
 
                 if (plugin.getConfig().getBoolean("ChatCo.lastCommand", true) && (cmdName.equals("l") || cmdName.equals("last"))) {
-                    if (argTexts.size() < 1) {
+                    if (args.length < 2) {
                         sender.sendMessage(componentFromLegacyText("&eUsage: /l <message>"));
                         event.setCancelled(true);
                         return;
                     }
 
-                    ChatPlayer cp = ((Main) plugin).getChatPlayer(sender);
-                    final Player target = cp.getLastReceiver();
+                    final Player target = ((Main) plugin).getChatPlayer(sender).getLastReceiver();
 
-                    if ((target == null && cp.LastReceiver != null) || isVanished(target)) {
+                    if ((target == null && ((Main) plugin).getChatPlayer(sender).LastReceiver != null)
+                            || isVanished(target)) {
                         sender.sendMessage(componentFromLegacyText("&cThe last person you sent a private message to is offline."));
                     } else if (target == null) {
                         sender.sendMessage(componentFromLegacyText("&cYou have not initiated any private message in this session."));
                     } else {
-                        String whisperMessage = String.join(" ", argTexts);
+                        String whisperMessage = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
                         
                         // Check for unicode characters
                         if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
-                            // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
                                 plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
                             }
@@ -226,7 +213,6 @@ public class Whispers implements Listener {
                         
                         // Check for blacklisted words
                         if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
-                            // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                                 plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
                             }
@@ -239,25 +225,24 @@ public class Whispers implements Listener {
 
                     event.setCancelled(true);
                 } else if (plugin.getConfig().getBoolean("ChatCo.replyCommands", true) && (cmdName.equals("r") || cmdName.equals("reply"))) {
-                    if (argTexts.size() < 1) {
+                    if (args.length < 2) {
                         sender.sendMessage(componentFromLegacyText("&eUsage: /r <message>"));
                         event.setCancelled(true);
                         return;
                     }
 
-                    ChatPlayer cp = ((Main) plugin).getChatPlayer(sender);
-                    final Player target = cp.getLastMessenger();
+                    final Player target = ((Main) plugin).getChatPlayer(sender).getLastMessenger();
 
-                    if ((target == null && cp.LastMessenger != null) || isVanished(target)) {
+                    if ((target == null && ((Main) plugin).getChatPlayer(sender).LastMessenger != null)
+                            || isVanished(target)) {
                         sender.sendMessage(componentFromLegacyText("&cThe last person you received a private message from is offline."));
                     } else if (target == null) {
                         sender.sendMessage(componentFromLegacyText("&cYou have not received any private messages in this session."));
                     } else {
-                        String whisperMessage = String.join(" ", argTexts);
+                        String whisperMessage = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
                         
                         // Check for unicode characters
                         if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
-                            // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
                                 plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
                             }
@@ -267,7 +252,6 @@ public class Whispers implements Listener {
                         
                         // Check for blacklisted words
                         if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
-                            // Log blocked message if debug is enabled
                             if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                                 plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
                             }
@@ -280,30 +264,24 @@ public class Whispers implements Listener {
 
                     event.setCancelled(true);
                 } else if (cmdName.equals("tell") || cmdName.equals("msg") || cmdName.equals("t") || cmdName.equals("w") || cmdName.equals("whisper") || cmdName.equals("pm")) {
-                    if (argTexts.size() < 2) {
+                    if (args.length < 3) {
                         sender.sendMessage(componentFromLegacyText("&eUsage: /w <player> <message>"));
                         event.setCancelled(true);
                         return;
                     }
 
-                    String playerNamePlain = PlainTextComponentSerializer.plainText().serialize(GsonComponentSerializer.gson().deserialize(arguments[0].getJson()));
-                    final Player target = Bukkit.getPlayerExact(playerNamePlain);
+                    final Player target = Bukkit.getPlayerExact(args[1]);
 
                     if (target == null || isVanished(target)) {
-                        sender.sendMessage(componentFromLegacyText("&c" + playerNamePlain + " is offline."));
+                        sender.sendMessage(componentFromLegacyText("&c" + args[1] + " is offline."));
                         event.setCancelled(true);
                         return;
                     }
 
-                    String whisperMessage = "";
-                    for (int i = 1; i < argTexts.size(); i++) {
-                        if (i > 1) whisperMessage += " ";
-                        whisperMessage += argTexts.get(i);
-                    }
+                    String whisperMessage = Arrays.stream(args).skip(2).collect(Collectors.joining(" "));
                     
                     // Check for unicode characters
                     if (plugin.getConfig().getBoolean("ChatCo.blockUnicodeText", false) && containsUnicode(whisperMessage)) {
-                        // Log blocked message if debug is enabled
                         if (plugin.getConfig().getBoolean("ChatCo.debugUnicodeBlocking", false)) {
                             plugin.getLogger().info("Blocked unicode whisper from " + sender.getName() + ": " + whisperMessage);
                         }
@@ -313,7 +291,6 @@ public class Whispers implements Listener {
                     
                     // Check for blacklisted words
                     if (((Main) plugin).getBlacklistFilter().containsBlacklistedWord(whisperMessage)) {
-                        // Log blocked message if debug is enabled
                         if (plugin.getConfig().getBoolean("ChatCo.debugBlacklistBlocking", false)) {
                             plugin.getLogger().info("Blocked blacklisted whisper from " + sender.getName() + ": " + whisperMessage);
                         }
