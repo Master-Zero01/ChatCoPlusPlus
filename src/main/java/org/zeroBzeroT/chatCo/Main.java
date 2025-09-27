@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -19,6 +20,7 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
+
 import static org.zeroBzeroT.chatCo.Utils.componentFromLegacyText;
 import static org.zeroBzeroT.chatCo.Utils.saveStreamToFile;
 
@@ -73,11 +75,12 @@ public class Main extends JavaPlugin {
 
         saveResourceFiles();
         toggleConfigValue(0);
-        
+
         // Initialize blacklist filter
         blacklistFilter = new BlacklistFilter(this);
 
         final PluginManager pm = getServer().getPluginManager();
+        // Register public chat listener with duplicate blocking
         pm.registerEvents(new PublicChat(this), this);
         pm.registerEvents(new BlackholeModule(this), this);
 
@@ -94,8 +97,8 @@ public class Main extends JavaPlugin {
             Metrics metrics = new Metrics(this, 16309);
         }
 
+        getLogger().info("ChatCo enabled.");
     }
-
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private void saveResourceFiles() {
@@ -214,7 +217,6 @@ public class Main extends JavaPlugin {
                     return true;
                 }
 
-
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -233,7 +235,6 @@ public class Main extends JavaPlugin {
                     sender.sendMessage(componentFromLegacyText("&cThis command can only be used by players."));
                     return true;
                 }
-
 
                 Location location = player.getBedSpawnLocation();
                 if (location != null) {
@@ -328,23 +329,23 @@ public class Main extends JavaPlugin {
                 sender.sendMessage("Config reloaded");
                 return true;
             }
-            
+
             if (args.length >= 2 && args[0].equalsIgnoreCase("blacklist")) {
                 // Check if the sender has the blacklist management permission
                 if (!sender.hasPermission("ChatCo.admin.blacklist")) {
                     sender.sendMessage("You don't have permission to manage the blacklist");
                     return true;
                 }
-                
+
                 if (args[1].equalsIgnoreCase("test") && args.length >= 3) {
                     // Join remaining args as the test message
                     String testMessage = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
                     boolean blocked = blacklistFilter.containsBlacklistedWord(testMessage);
-                    sender.sendMessage("Test message: \"" + testMessage + "\" would be " + 
-                        (blocked ? "BLOCKED" : "ALLOWED"));
+                    sender.sendMessage("Test message: \"" + testMessage + "\" would be " +
+                            (blocked ? "BLOCKED" : "ALLOWED"));
                     return true;
                 }
-                
+
                 if (args[1].equalsIgnoreCase("add") && args.length >= 3) {
                     // Add word to blacklist
                     String word = args[2].toLowerCase();
@@ -360,7 +361,7 @@ public class Main extends JavaPlugin {
                     }
                     return true;
                 }
-                
+
                 if (args[1].equalsIgnoreCase("remove") && args.length >= 3) {
                     // Remove word from blacklist
                     String word = args[2].toLowerCase();
@@ -376,7 +377,7 @@ public class Main extends JavaPlugin {
                     }
                     return true;
                 }
-                
+
                 if (args[1].equalsIgnoreCase("list")) {
                     // List blacklisted words
                     List<String> blacklist = getConfig().getStringList("ChatCo.wordBlacklist");
