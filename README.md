@@ -2,7 +2,7 @@
 
 **THIS IS NOT INTENDED FOR PRODUCTION-USE; THIS IS A PERSONAL FORK MODIFIED USING AI**
 
-ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficient chat system with colored text, ignores, whispers, announcements, muting, word blacklisting, and optional logging.
+ChatCoPlusPlus is a plugin for the Minecraft server **3b3tpe** that provides an efficient chat system with colored text, ignores, whispers, announcements, antispam, muting, word blacklisting, and optional logging.
 
 ![logo](https://github.com/AnarchadiaMC/ChatCoPlus/blob/main/logo.jpg?raw=true)
 
@@ -26,7 +26,7 @@ ChatCoPlus is a plugin for **Spigot Minecraft Servers** that provides an efficie
 
 ## Source
 
-ChatCoPlus is a rebuild and fork of the famous chat plugin ChatCo created by [jj20051](https://github.com/WiredTombstone), who is the founder and current owner of 9b9t. Original source can be found here: https://github.com/2builders2tool/ChatCo
+ChatCoPlusPlus is a rebuild and fork of the famous chat plugin ChatCo created by [jj20051](https://github.com/WiredTombstone), who is the founder and current owner of 9b9t. Original source can be found here: https://github.com/2builders2tool/ChatCo
 
 This fork includes significant updates, enhancements, and AI-assisted modifications for modern Minecraft versions.
 
